@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>Media Upload Manager | Supabase Storage</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    }
+    body {
+      background: #f1f5f9;
+      padding: 24px;
+      color: #0f172a;
+    }
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    .app-header {
+      background: linear-gradient(135deg, #0f2b3d, #1e4a76);
+      color: white;
+      padding: 24px 28px;
+      border-radius: 32px;
+      margin-bottom: 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1);
+    }
+    .title h1 { font-size: 1.8rem; letter-spacing: -0.3px; }
+    .title p { opacity: 0.85; font-size: 0.9rem; margin-top: 6px; }
+    .badge {
+      background: rgba(255,255,255,0.15);
+      backdrop-filter: blur(4px);
+      padding: 8px 18px;
+      border-radius: 60px;
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+    .bucket-bar {
+      background: white;
+      border-radius: 60px;
+      padding: 8px 20px;
+      margin-bottom: 24px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    .bucket-btn {
+      background: #e2e8f0;
+      border: none;
+      padding: 10px 24px;
+      border-radius: 40px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.2s;
+      color: #1e293b;
+    }
+    .bucket-btn.active {
+      background: #1e4a76;
+      color: white;
+    }
+    .upload-area {
+      background: white;
+      border-radius: 32px;
+      padding: 32px;
+      margin-bottom: 32px;
+      text-align: center;
+      border: 2px dashed #cbd5e1;
+      transition: 0.2s;
+      cursor: pointer;
+    }
+    .upload-area.drag-over {
+      background: #eff6ff;
+      border-color: #3b82f6;
+    }
+    .upload-icon {
+      font-size: 3rem;
+      color: #1e4a76;
+      margin-bottom: 16px;
+    }
+    .upload-area h3 {
+      margin-bottom: 8px;
+    }
+    .upload-area p {
+      color: #475569;
+      font-size: 0.9rem;
+    }
+    .file-list {
+      background: white;
+      border-radius: 32px;
+      padding: 24px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    .file-list-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .file-list-header h2 {
+      font-size: 1.3rem;
+    }
+    .refresh-btn {
+      background: #e2e8f0;
+      border: none;
+      padding: 8px 20px;
+      border-radius: 40px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .file-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 20px;
+    }
+    .file-card {
+      background: #f8fafc;
+      border-radius: 20px;
+      padding: 12px;
+      text-align: center;
+      transition: 0.1s;
+      border: 1px solid #e2e8f0;
+      position: relative;
+    }
+    .file-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+    }
+    .file-preview {
+      width: 100%;
+      aspect-ratio: 1/1;
+      object-fit: cover;
+      border-radius: 16px;
+      background: #e2e8f0;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .file-preview img, .file-preview video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .file-name {
+      font-size: 0.8rem;
+      font-weight: 500;
+      word-break: break-all;
+      margin-bottom: 8px;
+    }
+    .delete-file-btn {
+      background: #b91c1c;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 40px;
+      font-size: 0.7rem;
+      cursor: pointer;
+      width: 100%;
+      transition: 0.2s;
+    }
+    .delete-file-btn:hover {
+      background: #7f1a1a;
+    }
+    .empty-state {
+      text-align: center;
+      padding: 60px;
+      color: #94a3b8;
+    }
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #0f172a;
+      color: white;
+      padding: 14px 24px;
+      border-radius: 60px;
+      z-index: 2000;
+      display: none;
+      font-weight: 500;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+    }
+    .error-banner {
+      background: #fee2e2;
+      border-left: 6px solid #b91c1c;
+      padding: 16px;
+      border-radius: 16px;
+      margin-bottom: 24px;
+      color: #7f1a1a;
+    }
+    @media (max-width: 700px) {
+      .file-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+      .upload-area { padding: 20px; }
+    }
+  </style>
+  <!-- Add this button anywhere inside your calendar page (e.g., next to the refresh button) -->
+<a href="index.html" class="upload-nav-btn">
+  <i class="fas fa-cloud-upload-alt"></i> Calendar
+</a>
+
+<style>
+  .upload-nav-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #10b981;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 40px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    border: none;
+    cursor: pointer;
+    margin-bottom: 5%;
+  }
+  .upload-nav-btn:hover {
+    background: #059669;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  }
+  .upload-nav-btn i {
+    font-size: 1rem;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="app-header">
+    <div class="title">
+      <h1><i class="fas fa-cloud-upload-alt"></i> Media Upload Manager</h1>
+      <p>Drag & drop files into Supabase Storage • View & delete files</p>
+    </div>
+    <div class="badge"><i class="fas fa-database"></i> Connected to Supabase</div>
+  </div>
+
+  <div id="errorMessage" class="error-banner" style="display: none;"></div>
+
+  <div class="bucket-bar" id="bucketBar"></div>
+
+  <div class="upload-area" id="uploadArea">
+    <div class="upload-icon"><i class="fas fa-cloud-upload-alt"></i></div>
+    <h3>Drag & drop files here or click to select</h3>
+    <p>Supports images (jpg, png, gif, webp) and videos (mp4, mov, webm). Max 50MB per file.</p>
+    <input type="file" id="fileInput" multiple style="display: none;" accept="image/*,video/*">
+  </div>
+
+  <div class="file-list">
+    <div class="file-list-header">
+      <h2><i class="fas fa-folder-open"></i> <span id="currentBucketLabel">Loading...</span> files</h2>
+      <button class="refresh-btn" id="refreshFilesBtn"><i class="fas fa-sync-alt"></i> Refresh</button>
+    </div>
+    <div id="fileGridContainer" class="file-grid">
+      <div class="empty-state">Loading files...</div>
+    </div>
+  </div>
+</div>
+
+<div id="toastMsg" class="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  // Use an IIFE to avoid global variable conflicts
+  (function() {
+    const SUPABASE_URL = "https://merpsvkfmjbugrgnwwlq.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1lcnBzdmtmbWpidWdyZ253d2xxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE4NzcyMDksImV4cCI6MjA3NzQ1MzIwOX0.HYqgv5VFQxQ0E1QsxXYLLXu_r6LguyAEaErDSkHUc88";
+    
+    const BUCKETS = ["ShortForm", "carousel-image"];
+    
+    let supabaseClient = null;
+    let currentBucket = BUCKETS[0];
+    let currentFiles = [];
+    
+    // Helper functions
+    function showToast(message, isError = false) {
+      const toast = document.getElementById('toastMsg');
+      toast.textContent = message;
+      toast.style.backgroundColor = isError ? '#b91c1c' : '#0f172a';
+      toast.style.display = 'block';
+      setTimeout(() => {
+        toast.style.display = 'none';
+      }, 3500);
+    }
+    
+    function showError(message) {
+      const errorDiv = document.getElementById('errorMessage');
+      errorDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${message}`;
+      errorDiv.style.display = 'block';
+      setTimeout(() => {
+        errorDiv.style.display = 'none';
+      }, 8000);
+    }
+    
+    function formatFileSize(bytes) {
+      if (bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+    
+    // Initialize Supabase client
+    function initSupabase() {
+      if (typeof window.supabase === 'undefined') {
+        showError("Supabase library failed to load. Check your internet connection.");
+        return false;
+      }
+      try {
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        return true;
+      } catch (err) {
+        showError("Failed to initialize Supabase: " + err.message);
+        return false;
+      }
+    }
+    
+    // Load files from current bucket
+    async function loadFiles() {
+      if (!supabaseClient) {
+        document.getElementById('fileGridContainer').innerHTML = '<div class="empty-state">⚠️ Supabase not initialized</div>';
+        return;
+      }
+      
+      const container = document.getElementById('fileGridContainer');
+      container.innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i> Loading files...</div>';
+      
+      try {
+        const { data, error } = await supabaseClient.storage.from(currentBucket).list('', { limit: 500 });
+        if (error) {
+          if (error.message.includes("bucket not found")) {
+            container.innerHTML = `<div class="empty-state">⚠️ Bucket "${currentBucket}" does not exist or you don't have access.<br>Please create it in Supabase Storage.</div>`;
+          } else {
+            throw error;
+          }
+          return;
+        }
+        currentFiles = (data || []).filter(f => !f.name.startsWith('.') && !f.name.endsWith('/'));
+        renderFileGrid();
+      } catch (err) {
+        console.error(err);
+        container.innerHTML = `<div class="empty-state">❌ Failed to load files: ${err.message}</div>`;
+        showToast("Error loading files: " + err.message, true);
+      }
+    }
+    
+    // Render file grid with previews
+    function renderFileGrid() {
+      const container = document.getElementById('fileGridContainer');
+      const labelSpan = document.getElementById('currentBucketLabel');
+      if (labelSpan) labelSpan.textContent = currentBucket;
+      
+      if (!currentFiles.length) {
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-folder-open"></i> No files found. Upload something!</div>';
+        return;
+      }
+      
+      container.innerHTML = '';
+      currentFiles.forEach(file => {
+        const publicUrl = supabaseClient.storage.from(currentBucket).getPublicUrl(file.name).data.publicUrl;
+        const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(file.name);
+        const isVideo = /\.(mp4|mov|webm|avi)$/i.test(file.name);
+        const fileSize = file.metadata?.size || 0;
+        
+        const card = document.createElement('div');
+        card.className = 'file-card';
+        
+        const previewDiv = document.createElement('div');
+        previewDiv.className = 'file-preview';
+        
+        if (isImage) {
+          const img = document.createElement('img');
+          img.src = publicUrl;
+          img.alt = file.name;
+          img.loading = 'lazy';
+          img.onerror = () => { img.src = 'https://placehold.co/200x200?text=Error'; };
+          previewDiv.appendChild(img);
+        } else if (isVideo) {
+          const video = document.createElement('video');
+          video.src = publicUrl;
+          video.muted = true;
+          video.preload = 'metadata';
+          video.addEventListener('mouseenter', () => video.play());
+          video.addEventListener('mouseleave', () => { video.pause(); video.currentTime = 0; });
+          previewDiv.appendChild(video);
+        } else {
+          previewDiv.innerHTML = '<i class="fas fa-file" style="font-size: 2rem; color: #64748b;"></i>';
+        }
+        
+        const nameSpan = document.createElement('div');
+        nameSpan.className = 'file-name';
+        nameSpan.title = file.name;
+        nameSpan.textContent = file.name.length > 30 ? file.name.slice(0, 27) + '...' : file.name;
+        
+        const sizeSpan = document.createElement('div');
+        sizeSpan.style.fontSize = '0.65rem';
+        sizeSpan.style.color = '#64748b';
+        sizeSpan.style.marginBottom = '8px';
+        sizeSpan.textContent = fileSize ? formatFileSize(fileSize) : '';
+        
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'delete-file-btn';
+        deleteBtn.innerHTML = '<i class="fas fa-trash-alt"></i> Delete';
+        deleteBtn.onclick = (e) => {
+          e.stopPropagation();
+          confirmDelete(file.name);
+        };
+        
+        card.appendChild(previewDiv);
+        card.appendChild(nameSpan);
+        if (fileSize) card.appendChild(sizeSpan);
+        card.appendChild(deleteBtn);
+        container.appendChild(card);
+      });
+    }
+    
+    // Delete file with confirmation
+    async function confirmDelete(filename) {
+      if (!confirm(`Are you sure you want to delete "${filename}" from ${currentBucket}?\nThis action cannot be undone.`)) return;
+      try {
+        const { error } = await supabaseClient.storage.from(currentBucket).remove([filename]);
+        if (error) throw error;
+        showToast(`✅ Deleted "${filename}"`);
+        await loadFiles();
+      } catch (err) {
+        showToast(`Delete failed: ${err.message}`, true);
+      }
+    }
+    
+    // Upload files
+    async function uploadFiles(files) {
+      const validFiles = Array.from(files).filter(f => {
+        const isValidType = f.type.startsWith('image/') || f.type.startsWith('video/');
+        const isValidSize = f.size <= 50 * 1024 * 1024;
+        if (!isValidType) showToast(`Skipped ${f.name}: not an image/video`, true);
+        else if (!isValidSize) showToast(`Skipped ${f.name}: exceeds 50MB`, true);
+        return isValidType && isValidSize;
+      });
+      
+      if (validFiles.length === 0) return;
+      
+      let successCount = 0;
+      let failCount = 0;
+      
+      for (const file of validFiles) {
+        try {
+          const ext = file.name.split('.').pop();
+          const baseName = file.name.substring(0, file.name.lastIndexOf('.'));
+          const timestamp = Date.now();
+          const uniqueName = `${baseName}_${timestamp}.${ext}`;
+          
+          const { error } = await supabaseClient.storage.from(currentBucket).upload(uniqueName, file, {
+            cacheControl: '3600',
+            upsert: false
+          });
+          if (error) throw error;
+          successCount++;
+          showToast(`✅ Uploaded: ${file.name}`);
+        } catch (err) {
+          console.error(err);
+          failCount++;
+          let errorMsg = err.message;
+          if (errorMsg.includes("row-level security")) {
+            errorMsg = "Storage permission denied. Please enable RLS policies or use service role key.";
+          }
+          showToast(`❌ Failed: ${file.name} - ${errorMsg}`, true);
+        }
+      }
+      
+      if (successCount > 0) {
+        await loadFiles();
+      }
+      showToast(`Upload complete: ${successCount} succeeded, ${failCount} failed`, failCount > 0);
+    }
+    
+    // Setup bucket selector
+    function initBucketSelector() {
+      const container = document.getElementById('bucketBar');
+      container.innerHTML = '';
+      BUCKETS.forEach(bucket => {
+        const btn = document.createElement('button');
+        btn.textContent = bucket;
+        btn.classList.add('bucket-btn');
+        if (bucket === currentBucket) btn.classList.add('active');
+        btn.addEventListener('click', async () => {
+          currentBucket = bucket;
+          document.querySelectorAll('.bucket-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          await loadFiles();
+        });
+        container.appendChild(btn);
+      });
+    }
+    
+    // Drag & drop handling
+    function setupDragAndDrop() {
+      const dropZone = document.getElementById('uploadArea');
+      const fileInput = document.getElementById('fileInput');
+      
+      dropZone.addEventListener('click', () => fileInput.click());
+      dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('drag-over');
+      });
+      dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('drag-over');
+      });
+      dropZone.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('drag-over');
+        const files = e.dataTransfer.files;
+        if (files.length) await uploadFiles(files);
+      });
+      
+      fileInput.addEventListener('change', async (e) => {
+        if (e.target.files.length) {
+          await uploadFiles(e.target.files);
+          fileInput.value = '';
+        }
+      });
+    }
+    
+    // Refresh button
+    document.getElementById('refreshFilesBtn').addEventListener('click', () => loadFiles());
+    
+    // Initialization
+    async function init() {
+      if (!initSupabase()) return;
+      initBucketSelector();
+      setupDragAndDrop();
+      await loadFiles();
+    }
+    
+    init();
+  })();
+</script>
+</body>
+</html>
