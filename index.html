@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Content Calendar | Markets + Translation + Auto-Post</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    }
+    body {
+      background: #f1f5f9;
+      padding: 20px;
+      color: #0f172a;
+    }
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    .app-header {
+      background: linear-gradient(135deg, #0f2b3d, #1e4a76);
+      color: white;
+      padding: 24px 28px;
+      border-radius: 32px;
+      margin-bottom: 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1);
+    }
+    .title h1 { font-size: 1.8rem; letter-spacing: -0.3px; }
+    .title p { opacity: 0.85; font-size: 0.9rem; margin-top: 6px; }
+    .badge-group {
+      display: flex;
+      gap: 12px;
+    }
+    .badge {
+      background: rgba(255,255,255,0.15);
+      backdrop-filter: blur(4px);
+      padding: 8px 18px;
+      border-radius: 60px;
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+    .calendar-controls {
+      background: white;
+      border-radius: 60px;
+      padding: 12px 24px;
+      margin-bottom: 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    .month-nav {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .month-year {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #0f2b3d;
+      min-width: 210px;
+      text-align: center;
+    }
+    .btn-icon {
+      background: #1e4a76;
+      border: none;
+      color: white;
+      padding: 10px 18px;
+      border-radius: 40px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-icon:hover { background: #0f2b3d; transform: translateY(-1px); }
+    .btn-outline {
+      background: #f1f5f9;
+      color: #1e4a76;
+      border: 1px solid #cbd5e1;
+    }
+    .btn-outline:hover { background: #e2e8f0; }
+    .calendar-wrapper {
+      background: white;
+      border-radius: 32px;
+      overflow: hidden;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.08);
+    }
+    .weekdays {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      background: #f8fafc;
+      font-weight: 700;
+      text-align: center;
+      padding: 16px 0;
+      border-bottom: 1px solid #e2e8f0;
+      color: #334155;
+    }
+    .calendar-days-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      background: white;
+    }
+    .day-card {
+      min-height: 140px;
+      border: 1px solid #eef2ff;
+      padding: 10px;
+      transition: all 0.1s ease;
+      cursor: pointer;
+      background: white;
+    }
+    .day-card:hover { background: #fffbeb; transform: scale(0.99); }
+    .day-number {
+      font-weight: 800;
+      font-size: 1.2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .post-count {
+      background: #e2e8f0;
+      border-radius: 40px;
+      padding: 2px 8px;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+    .post-preview {
+      background: #f1f5f9;
+      border-radius: 14px;
+      padding: 6px 8px;
+      margin-top: 8px;
+      font-size: 0.7rem;
+      border-left: 4px solid #3b82f6;
+      word-break: break-word;
+    }
+    .market-tag {
+      display: inline-block;
+      background: #e0e7ff;
+      border-radius: 20px;
+      padding: 2px 6px;
+      font-size: 0.6rem;
+      font-weight: 600;
+      margin-right: 4px;
+      margin-top: 4px;
+    }
+    .empty-day-hint {
+      font-size: 0.7rem;
+      color: #94a3b8;
+      margin-top: 8px;
+      text-align: center;
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(3px);
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+    }
+    .modal-content {
+      background: white;
+      max-width: 850px;
+      width: 92%;
+      max-height: 90vh;
+      border-radius: 40px;
+      overflow-y: auto;
+      padding: 28px;
+      box-shadow: 0 25px 50px -12px black;
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid #eef2ff;
+    }
+    .form-row { margin-bottom: 22px; }
+    label {
+      font-weight: 600;
+      display: block;
+      margin-bottom: 8px;
+      color: #1e293b;
+    }
+    select, input, textarea {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 20px;
+      font-size: 0.95rem;
+      transition: 0.2s;
+    }
+    .platform-group, .markets-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: center;
+      background: #f8fafc;
+      padding: 12px 16px;
+      border-radius: 28px;
+    }
+    .platform-group label, .markets-group label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: normal;
+      margin-bottom: 0;
+      cursor: pointer;
+    }
+    .media-preview-card {
+      background: #f1f5f9;
+      border-radius: 24px;
+      padding: 16px;
+      text-align: center;
+      margin-top: 10px;
+    }
+    .media-preview-card img, .media-preview-card video {
+      max-width: 100%;
+      max-height: 220px;
+      border-radius: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .btn-group {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-top: 28px;
+    }
+    .btn {
+      padding: 10px 24px;
+      border-radius: 40px;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-primary { background: #1e4a76; color: white; }
+    .btn-secondary { background: #e2e8f0; color: #1e293b; }
+    .btn-danger { background: #b91c1c; color: white; }
+    .btn-success { background: #10b981; color: white; }
+    .lang-check-group, .markets-check-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      background: #f9f9ff;
+      padding: 14px;
+      border-radius: 28px;
+    }
+    .lang-check-group label, .markets-check-group label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: normal;
+      background: white;
+      padding: 6px 14px;
+      border-radius: 60px;
+      border: 1px solid #cbd5e1;
+    }
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #0f172a;
+      color: white;
+      padding: 14px 24px;
+      border-radius: 60px;
+      z-index: 2100;
+      display: none;
+      font-weight: 500;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+    }
+    .media-selector {
+      background: #f1f5f9;
+      border-radius: 24px;
+      padding: 12px;
+      margin-top: 8px;
+    }
+    .bucket-list {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .bucket-btn {
+      background: white;
+      border: 1px solid #cbd5e1;
+      padding: 8px 16px;
+      border-radius: 40px;
+      cursor: pointer;
+    }
+    .bucket-btn.active { background: #1e4a76; color: white; border: none; }
+    .file-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: 12px;
+      max-height: 260px;
+      overflow-y: auto;
+      padding: 6px;
+    }
+    .file-item {
+      background: white;
+      border-radius: 16px;
+      padding: 8px;
+      text-align: center;
+      cursor: pointer;
+      transition: 0.1s;
+      border: 2px solid transparent;
+    }
+    .file-item.selected { border-color: #3b82f6; background: #eff6ff; }
+    .file-item img, .file-item video {
+      width: 100%;
+      aspect-ratio: 1/1;
+      object-fit: cover;
+      border-radius: 12px;
+    }
+    .file-name {
+      font-size: 0.7rem;
+      margin-top: 6px;
+      word-break: break-all;
+    }
+    hr { margin: 16px 0; }
+    @media (max-width: 700px) {
+      .day-card { min-height: 110px; padding: 6px; }
+      .month-year { font-size: 1.1rem; min-width: 140px; }
+    }
+  </style>
+  <!-- Add this button anywhere inside your calendar page (e.g., next to the refresh button) -->
+<a href="upload.html" class="upload-nav-btn">
+  <i class="fas fa-cloud-upload-alt"></i> Upload Media
+</a>
+
+<style>
+  .upload-nav-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #10b981;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 40px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    border: none;
+    cursor: pointer;
+    margin-bottom: 5%;
+  }
+  .upload-nav-btn:hover {
+    background: #059669;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  }
+  .upload-nav-btn i {
+    font-size: 1rem;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="app-header">
+    <div class="title">
+      <h1><i class="fas fa-globe-americas"></i> Multi-Region Content Calendar</h1>
+      <p>Schedule posts per market · Select media from Supabase · Translation & Auto-posting ready</p>
+    </div>
+    <div class="badge-group">
+      <div class="badge"><i class="fas fa-database"></i> Supabase Media</div>
+      <div class="badge"><i class="fas fa-language"></i> Auto-Translate</div>
+      <div class="badge"><i class="fas fa-rocket"></i> Webhook Auto-Post</div>
+    </div>
+  </div>
+  
+
+  <div class="calendar-controls">
+    <div class="month-nav">
+      <button class="btn-icon" id="prevMonthBtn"><i class="fas fa-chevron-left"></i> Prev</button>
+      <div class="month-year" id="monthYearDisplay">Loading...</div>
+      <button class="btn-icon" id="nextMonthBtn">Next <i class="fas fa-chevron-right"></i></button>
+    </div>
+    <button class="btn-icon btn-outline" id="refreshCalendarBtn"><i class="fas fa-sync-alt"></i> Refresh</button>
+  </div>
+
+  <div class="calendar-wrapper">
+    <div class="weekdays">
+      <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+    </div>
+    <div id="calendarDaysGrid" class="calendar-days-grid"></div>
+  </div>
+  <p style="margin-top: 20px; text-align: center; font-size: 0.8rem; color: #475569;"><i class="fas fa-fingerprint"></i> Click any day → add/edit post. Select markets & media, then save.</p>
+</div>
+
+<!-- MODAL -->
+<div id="postModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <span id="modalTitle">📅 Schedule Post</span>
+      <button class="closeModalBtn" style="background: none; border: none; font-size: 32px; cursor: pointer;">&times;</button>
+    </div>
+    <form id="postForm">
+      <input type="hidden" id="editPostId">
+      <input type="hidden" id="postDateKey">
+
+      <div class="form-row">
+        <label>🎬 Content Type</label>
+        <select id="contentType" required>
+          <option value="image">📸 Image</option>
+          <option value="video">🎥 Video</option>
+        </select>
+      </div>
+
+      <div class="form-row">
+        <label>📁 Select Media from Supabase Storage</label>
+        <div class="media-selector">
+          <div class="bucket-list" id="bucketSelector"></div>
+          <div id="fileListContainer" class="file-grid">Loading files...</div>
+        </div>
+        <div id="selectedMediaPreview" class="media-preview-card" style="display: none;"></div>
+        <input type="hidden" id="selectedMediaUrl">
+        <input type="hidden" id="selectedMediaName">
+      </div>
+
+      <div class="form-row">
+        <label>📝 Caption</label>
+        <textarea id="caption" rows="3" placeholder="Write post caption..."></textarea>
+      </div>
+
+      <div class="form-row">
+        <label>⏰ Scheduled Time</label>
+        <input type="time" id="scheduledTime" value="10:00" required>
+      </div>
+
+      <div class="form-row">
+        <label>🌍 Target Markets / Regions</label>
+        <div class="markets-check-group" id="marketsSelector"></div>
+        <small>Select one or multiple markets where this post should appear.</small>
+      </div>
+
+      <div class="form-row">
+        <label>📱 Platforms</label>
+        <div class="platform-group">
+          <label><i class="fab fa-facebook"></i> <input type="checkbox" value="facebook"> Facebook</label>
+          <label><i class="fab fa-instagram"></i> <input type="checkbox" value="instagram"> Instagram</label>
+          <label><i class="fab fa-tiktok"></i> <input type="checkbox" value="tiktok"> TikTok</label>
+          <label><i class="fab fa-youtube"></i> <input type="checkbox" value="youtube"> YouTube</label>
+          <label><i class="fab fa-google"></i> <input type="checkbox" value="google"> Google Business</label>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <label><i class="fas fa-language"></i> Translate to (Webhook trigger)</label>
+        <div class="lang-check-group" id="langSelector"></div>
+        <small>Selected languages will send translation request to your n8n webhook.</small>
+      </div>
+
+      <div class="btn-group">
+        <button type="button" id="deletePostBtn" class="btn btn-danger" style="display: none;">Delete</button>
+        <button type="button" id="manualPostNowBtn" class="btn btn-success" style="display: none;"><i class="fas fa-paper-plane"></i> Post Now (Auto-Webhook)</button>
+        <button type="button" id="cancelModalBtn" class="btn btn-secondary">Cancel</button>
+        <button type="submit" class="btn btn-primary">💾 Save & Trigger Translation</button>
+      </div>
+    </form>
+    <div id="translationFeedback" style="margin-top: 16px; font-size: 0.8rem; color: #2c5f8a;"></div>
+  </div>
+</div>
+
+<div id="toastMsg" class="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  (function() {
+    // ==================== CONFIGURATION ====================
+    const SUPABASE_URL = "https://merpsvkfmjbugrgnwwlq.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1lcnBzdmtmbWpidWdyZ253d2xxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE4NzcyMDksImV4cCI6MjA3NzQ1MzIwOX0.HYqgv5VFQxQ0E1QsxXYLLXu_r6LguyAEaErDSkHUc88";
+    
+    // 🔁 REPLACE WITH YOUR ACTUAL N8N WEBHOOKS
+    const TRANSLATION_WEBHOOK = "https://your-n8n.com/webhook/translate";
+    const AUTO_POST_WEBHOOK = "https://your-n8n.com/webhook/auto-post";
+    
+    const BUCKETS = ["ShortForm", "carousel-image"];
+    const MARKETS = ["US", "Korea", "India", "France", "Japan", "UK", "Germany", "Thailand", "Quuba", "UAE", "Israel"];
+    const LANGUAGES = ["English", "Spanish", "French", "German", "Japanese", "Korean", "Hindi", "Thai", "Arabic"];
+    
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const TABLE_NAME = "calendar_posts";
+    
+    // State
+    let currentDate = new Date();
+    let postsMap = {};          // dateKey -> array of posts
+    let useLocalFallback = false;
+    let currentBucket = BUCKETS[0];
+    let currentMediaFiles = [];
+    let selectedFileUrl = "";
+    let selectedFileName = "";
+    
+    // Helper functions
+    function showToast(msg, isError = false) {
+      const toast = document.getElementById('toastMsg');
+      toast.textContent = msg;
+      toast.style.backgroundColor = isError ? '#b91c1c' : '#0f172a';
+      toast.style.display = 'block';
+      setTimeout(() => toast.style.display = 'none', 3200);
+    }
+    
+    function formatYMD(date) {
+      return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+    }
+    
+    // Core rendering function - always works even with empty data
+    function renderCalendarGrid() {
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+      const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+      document.getElementById('monthYearDisplay').innerHTML = `${monthNames[month]} ${year}`;
+      
+      const firstDay = new Date(year, month, 1).getDay();
+      const daysInMonth = new Date(year, month+1, 0).getDate();
+      const container = document.getElementById('calendarDaysGrid');
+      if (!container) return;
+      container.innerHTML = '';
+      
+      let dayCounter = 1;
+      for (let i = 0; i < 42; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'day-card';
+        const row = Math.floor(i/7);
+        const col = i%7;
+        if (row === 0 && col < firstDay) {
+          cell.style.background = '#fafcff';
+          cell.style.opacity = '0.5';
+          cell.innerHTML = `<div class="day-number"></div>`;
+        } else if (dayCounter > daysInMonth) {
+          cell.style.background = '#fafcff';
+          cell.style.opacity = '0.5';
+          cell.innerHTML = `<div class="day-number"></div>`;
+        } else {
+          const dateKey = `${year}-${String(month+1).padStart(2,'0')}-${String(dayCounter).padStart(2,'0')}`;
+          const posts = postsMap[dateKey] || [];
+          let previewHtml = '';
+          posts.slice(0,2).forEach(p => {
+            const typeIcon = p.content_type === 'image' ? '🖼️' : '🎬';
+            const marketsHtml = (p.markets || []).map(m => `<span class="market-tag">${m}</span>`).join('');
+            previewHtml += `<div class="post-preview">
+              <strong>${typeIcon}</strong> ${(p.caption || '').substring(0,25)}<br>
+              <div style="margin-top: 4px;">${marketsHtml}</div>
+            </div>`;
+          });
+          if (posts.length > 2) previewHtml += `<div class="post-preview">+${posts.length-2} more</div>`;
+          cell.innerHTML = `
+            <div class="day-number">
+              <span>${dayCounter}</span>
+              ${posts.length ? `<span class="post-count">${posts.length}</span>` : ''}
+            </div>
+            ${previewHtml || '<div class="empty-day-hint">➕ Click to add</div>'}
+          `;
+          cell.addEventListener('click', (function(dk) { return function() { openPostModal(dk, null); }; })(dateKey));
+          dayCounter++;
+        }
+        container.appendChild(cell);
+      }
+    }
+    
+    // Data loading with fallback
+    async function loadPosts() {
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+      const start = formatYMD(new Date(year, month, 1));
+      const end = formatYMD(new Date(year, month+1, 0));
+      
+      if (useLocalFallback) {
+        const raw = localStorage.getItem('calendar_posts_fallback');
+        postsMap = raw ? JSON.parse(raw) : {};
+        renderCalendarGrid();
+        return;
+      }
+      
+      try {
+        const { data, error } = await supabase.from(TABLE_NAME).select('*').gte('scheduled_date', start).lte('scheduled_date', end);
+        if (error) throw error;
+        postsMap = {};
+        (data || []).forEach(p => {
+          const d = p.scheduled_date;
+          if (!postsMap[d]) postsMap[d] = [];
+          postsMap[d].push(p);
+        });
+        renderCalendarGrid();
+      } catch (err) {
+        console.warn("Supabase error, using localStorage fallback", err);
+        useLocalFallback = true;
+        const stored = localStorage.getItem('calendar_posts_fallback');
+        postsMap = stored ? JSON.parse(stored) : {};
+        renderCalendarGrid();
+        showToast("Using local storage (create Supabase table for cloud sync)", true);
+      }
+    }
+    
+    async function savePostToDB(postData, postId = null) {
+      if (useLocalFallback) {
+        const dateKey = postData.scheduled_date;
+        if (!postsMap[dateKey]) postsMap[dateKey] = [];
+        if (postId) {
+          const idx = postsMap[dateKey].findIndex(p => p.id === postId);
+          if (idx !== -1) postsMap[dateKey][idx] = { ...postData, id: postId };
+          else postsMap[dateKey].push({ ...postData, id: postId });
+        } else {
+          const newId = Date.now() + '-' + Math.random().toString(36);
+          postsMap[dateKey].push({ ...postData, id: newId });
+        }
+        localStorage.setItem('calendar_posts_fallback', JSON.stringify(postsMap));
+        renderCalendarGrid();
+        return { id: postId || (postsMap[postData.scheduled_date]?.slice(-1)[0]?.id) };
+      } else {
+        let result;
+        if (postId) result = await supabase.from(TABLE_NAME).update(postData).eq('id', postId);
+        else result = await supabase.from(TABLE_NAME).insert([postData]);
+        if (result.error) throw result.error;
+        const savedId = postId || (result.data?.[0]?.id);
+        await loadPosts(); // reload to refresh view
+        return { id: savedId };
+      }
+    }
+    
+    async function deletePostFromDB(postId, dateKey) {
+      if (useLocalFallback) {
+        if (postsMap[dateKey]) {
+          postsMap[dateKey] = postsMap[dateKey].filter(p => p.id !== postId);
+          if (postsMap[dateKey].length === 0) delete postsMap[dateKey];
+          localStorage.setItem('calendar_posts_fallback', JSON.stringify(postsMap));
+          renderCalendarGrid();
+        }
+        return true;
+      } else {
+        const { error } = await supabase.from(TABLE_NAME).delete().eq('id', postId);
+        if (error) throw error;
+        await loadPosts();
+        return true;
+      }
+    }
+    
+    // Media picker
+    async function loadFilesFromBucket(bucket) {
+      const container = document.getElementById('fileListContainer');
+      if (!container) return;
+      container.innerHTML = '<div style="padding:20px; text-align:center;">Loading files...</div>';
+      try {
+        const { data, error } = await supabase.storage.from(bucket).list('', { limit: 200 });
+        if (error) throw error;
+        const files = (data || []).filter(f => !f.name.startsWith('.'));
+        currentMediaFiles = files;
+        renderFileGrid(files, bucket);
+      } catch (err) {
+        container.innerHTML = `<div style="color:red;">Error loading: ${err.message}</div>`;
+      }
+    }
+    
+    function renderFileGrid(files, bucket) {
+      const container = document.getElementById('fileListContainer');
+      if (!container) return;
+      if (!files.length) { container.innerHTML = '<div>📂 No media found in this bucket</div>'; return; }
+      container.innerHTML = '';
+      files.forEach(file => {
+        const publicUrl = supabase.storage.from(bucket).getPublicUrl(file.name).data.publicUrl;
+        const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(file.name);
+        const isVideo = /\.(mp4|mov|webm|avi)$/i.test(file.name);
+        const item = document.createElement('div');
+        item.className = 'file-item';
+        if (selectedFileName === file.name && currentBucket === bucket) item.classList.add('selected');
+        item.innerHTML = `
+          ${isImage ? `<img src="${publicUrl}" alt="preview" loading="lazy">` : (isVideo ? `<video src="${publicUrl}" style="width:100%; aspect-ratio:1/1; object-fit:cover;"></video>` : `<div style="background:#e2e8f0; aspect-ratio:1/1; display:flex; align-items:center; justify-content:center;"><i class="fas fa-file"></i></div>`)}
+          <div class="file-name">${file.name.slice(0, 20)}</div>
+        `;
+        item.onclick = () => {
+          document.querySelectorAll('.file-item').forEach(el => el.classList.remove('selected'));
+          item.classList.add('selected');
+          selectedFileUrl = publicUrl;
+          selectedFileName = file.name;
+          document.getElementById('selectedMediaUrl').value = publicUrl;
+          document.getElementById('selectedMediaName').value = file.name;
+          const previewDiv = document.getElementById('selectedMediaPreview');
+          const contentType = document.getElementById('contentType').value;
+          previewDiv.style.display = 'block';
+          if (contentType === 'image') previewDiv.innerHTML = `<img src="${publicUrl}" alt="selected">`;
+          else previewDiv.innerHTML = `<video controls src="${publicUrl}" style="max-width:100%; max-height:200px;"></video>`;
+        };
+        container.appendChild(item);
+      });
+    }
+    
+    function initBucketSelector() {
+      const container = document.getElementById('bucketSelector');
+      if (!container) return;
+      container.innerHTML = '';
+      BUCKETS.forEach(b => {
+        const btn = document.createElement('button');
+        btn.textContent = b;
+        btn.classList.add('bucket-btn');
+        if (b === currentBucket) btn.classList.add('active');
+        btn.onclick = () => {
+          document.querySelectorAll('.bucket-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          currentBucket = b;
+          loadFilesFromBucket(currentBucket);
+        };
+        container.appendChild(btn);
+      });
+      loadFilesFromBucket(currentBucket);
+    }
+    
+    function initMarketsSelector() {
+      const container = document.getElementById('marketsSelector');
+      if (!container) return;
+      container.innerHTML = '';
+      MARKETS.forEach(market => {
+        const label = document.createElement('label');
+        label.innerHTML = `<input type="checkbox" value="${market}"> ${market}`;
+        container.appendChild(label);
+      });
+    }
+    
+    function initLangSelector() {
+      const container = document.getElementById('langSelector');
+      if (!container) return;
+      container.innerHTML = '';
+      LANGUAGES.forEach(lang => {
+        const label = document.createElement('label');
+        label.innerHTML = `<input type="checkbox" value="${lang}"> ${lang}`;
+        container.appendChild(label);
+      });
+    }
+    
+    // Modal logic
+    async function openPostModal(dateKey, existingId) {
+      document.getElementById('postDateKey').value = dateKey;
+      document.getElementById('editPostId').value = existingId || '';
+      document.getElementById('modalTitle').innerHTML = existingId ? "✏️ Edit Post" : "📌 New Post";
+      document.getElementById('translationFeedback').innerHTML = '';
+      document.getElementById('manualPostNowBtn').style.display = 'none';
+      document.getElementById('deletePostBtn').style.display = existingId ? 'inline-block' : 'none';
+      
+      selectedFileUrl = '';
+      selectedFileName = '';
+      document.getElementById('selectedMediaUrl').value = '';
+      document.getElementById('selectedMediaName').value = '';
+      document.getElementById('selectedMediaPreview').style.display = 'none';
+      document.getElementById('contentType').value = 'image';
+      document.getElementById('caption').value = '';
+      document.getElementById('scheduledTime').value = '10:00';
+      document.querySelectorAll('.platform-group input').forEach(cb => cb.checked = false);
+      document.querySelectorAll('#marketsSelector input').forEach(cb => cb.checked = false);
+      document.querySelectorAll('#langSelector input').forEach(cb => cb.checked = false);
+      
+      if (existingId) {
+        let post = null;
+        if (useLocalFallback) {
+          for (const arr of Object.values(postsMap)) {
+            const found = arr.find(p => p.id === existingId);
+            if (found) { post = found; break; }
+          }
+        } else {
+          const { data } = await supabase.from(TABLE_NAME).select('*').eq('id', existingId).single();
+          post = data;
+        }
+        if (post) {
+          document.getElementById('contentType').value = post.content_type;
+          document.getElementById('caption').value = post.caption || '';
+          document.getElementById('scheduledTime').value = post.scheduled_time || '10:00';
+          const platforms = post.platforms || [];
+          document.querySelectorAll('.platform-group input').forEach(cb => cb.checked = platforms.includes(cb.value));
+          const markets = post.markets || [];
+          document.querySelectorAll('#marketsSelector input').forEach(cb => cb.checked = markets.includes(cb.value));
+          const langs = post.translation_languages || [];
+          document.querySelectorAll('#langSelector input').forEach(cb => cb.checked = langs.includes(cb.value));
+          if (post.media_url) {
+            selectedFileUrl = post.media_url;
+            selectedFileName = post.media_name || 'media';
+            document.getElementById('selectedMediaUrl').value = selectedFileUrl;
+            const previewDiv = document.getElementById('selectedMediaPreview');
+            previewDiv.style.display = 'block';
+            if (post.content_type === 'image') previewDiv.innerHTML = `<img src="${selectedFileUrl}" alt="preview">`;
+            else previewDiv.innerHTML = `<video controls src="${selectedFileUrl}"></video>`;
+          }
+          document.getElementById('manualPostNowBtn').style.display = 'inline-block';
+          document.getElementById('manualPostNowBtn').onclick = () => triggerAutoPost(existingId);
+        }
+      }
+      document.getElementById('postModal').style.display = 'flex';
+    }
+    
+    async function savePostForm(e) {
+      e.preventDefault();
+      const postId = document.getElementById('editPostId').value;
+      const dateKey = document.getElementById('postDateKey').value;
+      const contentType = document.getElementById('contentType').value;
+      const mediaUrl = document.getElementById('selectedMediaUrl').value;
+      const mediaName = document.getElementById('selectedMediaName').value;
+      const caption = document.getElementById('caption').value;
+      const scheduledTime = document.getElementById('scheduledTime').value;
+      const platforms = Array.from(document.querySelectorAll('.platform-group input:checked')).map(cb => cb.value);
+      const markets = Array.from(document.querySelectorAll('#marketsSelector input:checked')).map(cb => cb.value);
+      const translationLangs = Array.from(document.querySelectorAll('#langSelector input:checked')).map(cb => cb.value);
+      
+      if (!mediaUrl) { showToast("Please select media from Supabase", true); return; }
+      if (platforms.length === 0) { showToast("Select at least one platform", true); return; }
+      if (markets.length === 0) { showToast("Select at least one target market", true); return; }
+      
+      const postData = {
+        content_type: contentType,
+        media_url: mediaUrl,
+        media_name: mediaName,
+        caption: caption,
+        scheduled_date: dateKey,
+        scheduled_time: scheduledTime,
+        platforms: platforms,
+        markets: markets,
+        translation_languages: translationLangs,
+        posted: false,
+        updated_at: new Date().toISOString()
+      };
+      try {
+        const saved = await savePostToDB(postData, postId || null);
+        showToast("✅ Post saved");
+        closeModal();
+        if (translationLangs.length && TRANSLATION_WEBHOOK && !TRANSLATION_WEBHOOK.includes("your-n8n")) {
+          fetch(TRANSLATION_WEBHOOK, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ postId: saved.id, mediaUrl, targetLanguages: translationLangs, caption, platforms, markets, scheduledDate: dateKey })
+          }).catch(e=>console.warn);
+          document.getElementById('translationFeedback').innerHTML = '<i class="fas fa-paper-plane"></i> Translation webhook triggered.';
+        } else if (translationLangs.length) showToast("⚠️ Translation webhook not set", true);
+      } catch(err) { showToast("Save error: "+err.message, true); }
+    }
+    
+    async function triggerAutoPost(postId) {
+      let post = null;
+      if (useLocalFallback) {
+        for (const arr of Object.values(postsMap)) {
+          const found = arr.find(p => p.id === postId);
+          if (found) { post = found; break; }
+        }
+      } else {
+        const { data } = await supabase.from(TABLE_NAME).select('*').eq('id', postId).single();
+        post = data;
+      }
+      if (!post) { showToast("Post not found", true); return; }
+      if (AUTO_POST_WEBHOOK.includes("your-n8n")) { showToast("Set AUTO_POST_WEBHOOK URL", true); return; }
+      try {
+        const res = await fetch(AUTO_POST_WEBHOOK, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ postId: post.id, mediaUrl: post.media_url, caption: post.caption, platforms: post.platforms, markets: post.markets })
+        });
+        if (res.ok) showToast("Auto-post webhook triggered ✅");
+        else showToast("Webhook error", true);
+      } catch(e) { showToast("Network error", true); }
+    }
+    
+    async function deletePost() {
+      const postId = document.getElementById('editPostId').value;
+      const dateKey = document.getElementById('postDateKey').value;
+      if (!postId) return;
+      if (!confirm("Delete this scheduled post?")) return;
+      await deletePostFromDB(postId, dateKey);
+      showToast("Deleted");
+      closeModal();
+    }
+    
+    function closeModal() { document.getElementById('postModal').style.display = 'none'; }
+    
+    function setupEvents() {
+      document.getElementById('prevMonthBtn').onclick = () => { currentDate.setMonth(currentDate.getMonth()-1); loadPosts(); };
+      document.getElementById('nextMonthBtn').onclick = () => { currentDate.setMonth(currentDate.getMonth()+1); loadPosts(); };
+      document.getElementById('refreshCalendarBtn').onclick = () => loadPosts();
+      document.getElementById('postForm').addEventListener('submit', savePostForm);
+      document.getElementById('deletePostBtn').addEventListener('click', deletePost);
+      document.getElementById('cancelModalBtn').addEventListener('click', closeModal);
+      document.querySelectorAll('.closeModalBtn').forEach(btn => btn.addEventListener('click', closeModal));
+      window.onclick = (e) => { if (e.target === document.getElementById('postModal')) closeModal(); };
+    }
+    
+    // Initialization: render empty calendar first, then load data
+    function init() {
+      setupEvents();
+      initBucketSelector();
+      initMarketsSelector();
+      initLangSelector();
+      renderCalendarGrid();  // show empty grid immediately
+      loadPosts();           // then load real data
+    }
+    
+    init();
+  })();
+</script>
+</body>
+</html>
