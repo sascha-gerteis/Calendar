@@ -795,7 +795,6 @@
   const fetchPostsFromDatabase = async () => {
     showToast("Syncing with database...", "info");
     try {
-      // Fetching all rows. In a huge production app, you'd filter by current month.
       const { data, error } = await supabase
         .from('posts')
         .select('*')
@@ -850,19 +849,14 @@
 
     // 2. Render actual days of the month
     for (let day = 1; day <= daysInMonth; day++) {
-      // Format: YYYY-MM-DD
       const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      
-      // Find posts assigned to this date
       const postsForThisDay = AppState.postsData.filter(post => post.date === dateString);
       
       const dayCell = document.createElement('div');
       dayCell.className = `day-cell ${postsForThisDay.length > 0 ? 'has-data' : ''}`;
       
-      // Build HTML string for the day
       let cellHTML = `<span class="day-number">${day}</span>`;
       
-      // Append visual indicators for posts
       postsForThisDay.forEach(post => {
         const icon = post.type === 'Video' ? '<i class="fa-solid fa-video"></i>' : '<i class="fa-solid fa-image"></i>';
         const statusClass = post.is_posted ? 'status-posted' : '';
@@ -876,10 +870,7 @@
       });
 
       dayCell.innerHTML = cellHTML;
-      
-      // Clicking the empty space of the cell opens the "Create New" modal
       dayCell.onclick = () => openCreateModal(dateString);
-      
       gridBody.appendChild(dayCell);
     }
   };
@@ -903,7 +894,6 @@
       
       btn.onclick = (e) => {
         e.preventDefault();
-        // Remove active class from all
         document.querySelectorAll('.bucket-tab').forEach(t => t.classList.remove('active'));
         btn.classList.add('active');
         fetchFilesInBucket(bucketName);
@@ -912,7 +902,6 @@
       navContainer.appendChild(btn);
     });
 
-    // Automatically load the first bucket on initialization
     if (STORAGE_BUCKETS.length > 0) {
       fetchFilesInBucket(STORAGE_BUCKETS[0]);
     }
@@ -935,25 +924,28 @@
       }
 
       gallery.innerHTML = ''; // Clear loader
-
-      // Filter out hidden files (like .emptyFolderPlaceholder)
       const validFiles = data.filter(f => !f.name.startsWith('.'));
+      
+      // Get the currently selected media URL to persist highlight when switching tabs
+      const currentSelectedUrl = document.getElementById('hidden-media-url').value;
 
       validFiles.forEach(file => {
-        // Generate Public URL
         const { data: urlData } = supabase.storage.from(bucketName).getPublicUrl(file.name);
         const publicUrl = urlData.publicUrl;
-        
-        // Determine file type
         const isVideo = file.name.match(/\.(mp4|mov|webm)$/i);
         
         const card = document.createElement('div');
         card.className = 'media-card';
+        
+        // Ensure previously saved/selected image stays highlighted in the grid
+        if (publicUrl === currentSelectedUrl) {
+          card.classList.add('selected');
+        }
+
         card.innerHTML = isVideo 
           ? `<video src="${publicUrl}"></video><span>${file.name}</span>`
           : `<img src="${publicUrl}" loading="lazy"><span>${file.name}</span>`;
 
-        // Selection Logic
         card.onclick = () => {
           document.querySelectorAll('.media-card').forEach(c => c.classList.remove('selected'));
           card.classList.add('selected');
@@ -999,6 +991,9 @@
     document.getElementById('hidden-media-url').value = '';
     document.getElementById('media-preview-container').innerHTML = '<span style="color: #64748b; font-weight: 600;">No media selected</span>';
     
+    // -> FIX: Clear any visually selected highlights from the grid
+    document.querySelectorAll('.media-card').forEach(card => card.classList.remove('selected'));
+    
     // Update UI headers/buttons
     document.getElementById('modal-title-text').innerHTML = `<i class="fa-solid fa-calendar-plus"></i> Schedule for ${dateStr}`;
     document.getElementById('btn-delete').style.display = 'none';
@@ -1007,13 +1002,11 @@
     // Show Modal
     const modal = document.getElementById('post-modal');
     modal.style.display = 'flex';
-    // Small delay to allow display:flex to apply before adding opacity class for animation
     setTimeout(() => modal.classList.add('show'), 10);
   };
 
   /**
    * Opens the modal in "Edit" mode, populated with existing database data.
-   * Exposed to window so it can be called from inline onclick handlers.
    */
   window.openEditModal = (postId) => {
     const postRecord = AppState.postsData.find(p => p.id === postId);
@@ -1038,11 +1031,28 @@
       checkbox.checked = platforms.includes(checkbox.value);
     });
 
-    // Set Media
+    // -> FIX: Properly load and force the preview image/video
     const mediaUrl = postRecord.media_url;
     document.getElementById('hidden-media-url').value = mediaUrl;
-    const isVideo = postRecord.type === 'Video';
-    selectMediaFile(mediaUrl, isVideo);
+    
+    // Robust check for Video format to prevent broken previews
+    const isVideo = postRecord.type === 'Video' || mediaUrl.match(/\.(mp4|mov|webm)$/i);
+    const previewContainer = document.getElementById('media-preview-container');
+    
+    if (isVideo) {
+      previewContainer.innerHTML = `<video src="${mediaUrl}" controls></video>`;
+    } else {
+      previewContainer.innerHTML = `<img src="${mediaUrl}" alt="Selected Media Preview">`;
+    }
+
+    // -> FIX: Locate this specific file in the browser grid and re-apply the blue selection ring
+    document.querySelectorAll('.media-card').forEach(card => {
+      card.classList.remove('selected');
+      const mediaTag = card.querySelector('img, video');
+      if (mediaTag && mediaTag.src === mediaUrl) {
+        card.classList.add('selected');
+      }
+    });
 
     // Toggle Button Visibility
     document.getElementById('btn-delete').style.display = 'inline-flex';
@@ -1090,8 +1100,6 @@
 
   /**
    * ACTION: Save Schedule
-   * Inserts/Updates the database with is_posted = false.
-   * Only triggers TRANSLATE webhook if a language is selected. Does NOT trigger publish.
    */
   const handleSaveSchedule = async (e) => {
     e.preventDefault();
@@ -1108,17 +1116,13 @@
 
       let dbResponse;
       if (AppState.editingPostId) {
-        // Update existing record
         dbResponse = await supabase.from('posts').update(payload).eq('id', AppState.editingPostId).select();
       } else {
-        // Insert new record
         dbResponse = await supabase.from('posts').insert([payload]).select();
       }
 
       if (dbResponse.error) throw dbResponse.error;
 
-      // TRANSLATION AUTOMATION LOGIC:
-      // If a language other than "None" is selected, trigger the background translation webhook
       const selectedLanguage = payload.langs[0];
       if (selectedLanguage !== 'None') {
         const generatedId = dbResponse.data[0].id;
@@ -1134,7 +1138,6 @@
     } catch (error) {
       showToast(error.message, "error");
     } finally {
-      // Unlock button
       const saveBtn = document.getElementById('btn-save-schedule');
       saveBtn.disabled = false;
       saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save Schedule';
@@ -1143,7 +1146,6 @@
 
   /**
    * ACTION: Publish Now
-   * Updates database to is_posted = true AND triggers the immediate publish Webhook.
    */
   const handlePublishImmediately = async () => {
     if (!AppState.editingPostId) return;
@@ -1154,17 +1156,15 @@
 
     try {
       const payload = getFormData();
-      payload.is_posted = true; // Mark as posted
+      payload.is_posted = true; 
 
       const pubBtn = document.getElementById('btn-publish-now');
       pubBtn.disabled = true;
       pubBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Publishing...';
 
-      // 1. Update DB to reflect posted status
       const { data, error } = await supabase.from('posts').update(payload).eq('id', AppState.editingPostId).select();
       if (error) throw error;
 
-      // 2. Trigger Publish Webhook with the full payload
       const postRecord = data[0];
       triggerExternalWebhook(WEBHOOKS.PUBLISH_NOW, { ...postRecord, action: 'publish_immediately' });
 
@@ -1183,7 +1183,6 @@
 
   /**
    * ACTION: Delete
-   * Removes the record entirely from the Supabase database.
    */
   const handleDeletePost = async () => {
     if (!AppState.editingPostId) return;
@@ -1214,7 +1213,6 @@
 
   /**
    * Fires an asynchronous POST request to external automation tools (n8n/Zapier)
-   * Fails silently in the UI if the URL isn't real, to prevent blocking the user experience.
    */
   const triggerExternalWebhook = (url, payloadData) => {
     fetch(url, {
@@ -1223,23 +1221,19 @@
       body: JSON.stringify(payloadData)
     })
     .then(res => console.log(`Webhook Triggered [${url}]: Status ${res.status}`))
-    .catch(err => console.warn("Webhook communication error (expected if URL is a placeholder):", err));
+    .catch(err => console.warn("Webhook communication error:", err));
   };
 
   /**
-   * Displays the toast notification with dynamic colors based on type
-   * @param {string} message 
-   * @param {string} type 'success', 'error', 'info'
+   * Displays the toast notification with dynamic colors
    */
   const showToast = (message, type = 'info') => {
     const container = document.getElementById('toast-container');
     const msgEl = document.getElementById('toast-message');
     const iconEl = document.getElementById('toast-icon');
 
-    // Reset classes
     iconEl.className = 'fa-solid ';
     
-    // Apply styling based on type
     if (type === 'error') {
       container.style.backgroundColor = 'var(--danger-color)';
       iconEl.className += 'fa-circle-xmark';
@@ -1252,17 +1246,13 @@
     }
 
     msgEl.textContent = message;
-    
-    // Trigger animation
     container.classList.add('show');
     
-    // Auto-hide after 3.5 seconds
     setTimeout(() => {
       container.classList.remove('show');
     }, 3500);
   };
 
-  // Boot the application
   document.addEventListener('DOMContentLoaded', initApp);
 
 })();
