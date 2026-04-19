@@ -354,6 +354,19 @@
       color: var(--text-main);
     }
 
+    /* Video Warning Disclaimer */
+    #video-disclaimer {
+      display: none; 
+      color: var(--danger-color); 
+      background-color: #fef2f2;
+      border: 1px solid #fecaca;
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem; 
+      margin-top: 8px; 
+      font-weight: 600;
+    }
+
     /* ==========================================================================
        MEDIA BROWSER (SUPABASE)
        ========================================================================== */
@@ -590,6 +603,9 @@
             <option value="Image">📸 Static Image / Carousel (Up to 6)</option>
             <option value="Video">🎥 Short-Form Video</option>
           </select>
+          <div id="video-disclaimer">
+            <i class="fa-solid fa-triangle-exclamation"></i> Important: Video files must be strictly under 30MB or the social media upload will fail!
+          </div>
         </div>
 
         <div class="form-group full-width">
@@ -622,22 +638,11 @@
         </div>
 
         <div class="form-group full-width">
-          <label><i class="fa-solid fa-share-nodes"></i> Distribution Platforms (Multi-Select)</label>
+          <label><i class="fa-solid fa-share-nodes"></i> Distribution Platforms</label>
           <div class="checkbox-container" id="platform-checkboxes">
             <label class="checkbox-item"><input type="checkbox" name="platform" value="Facebook"> Facebook</label>
             <label class="checkbox-item"><input type="checkbox" name="platform" value="Instagram"> Instagram</label>
-            <label class="checkbox-item"><input type="checkbox" name="platform" value="TikTok"> TikTok</label>
-            <label class="checkbox-item"><input type="checkbox" name="platform" value="YouTube"> YouTube</label>
-            <label class="checkbox-item"><input type="checkbox" name="platform" value="Google Business"> Google Biz</label>
           </div>
-        </div>
-
-        <div class="form-group full-width">
-          <label for="language-select"><i class="fa-solid fa-language"></i> Automation: Auto-Translate To (Select One)</label>
-          <select id="language-select"></select>
-          <small style="color: var(--text-muted); margin-top: 4px; display: block;">
-            Selecting a language (other than None) will trigger the translation webhook upon saving.
-          </small>
         </div>
 
       </div>
@@ -666,8 +671,7 @@
      CONFIGURATION
      ========================================================================== */
   const WEBHOOKS = {
-    TRANSLATE: "https://your-n8n-url.com/webhook/translate-caption",
-    PUBLISH_NOW: "https://your-n8n-url.com/webhook/publish-immediately"
+    PUBLISH_NOW: "https://saschag.app.n8n.cloud/webhook/03ffeb05-f2e3-4d4a-8788-c96a5728e286" // Adjust if needed
   };
   
   const SUPABASE_URL = "https://merpsvkfmjbugrgnwwlq.supabase.co";
@@ -676,7 +680,6 @@
   // RESTRICTED BUCKETS
   const STORAGE_BUCKETS = ['ShortForm', 'carousel-image'];
   const TARGET_MARKETS = ['US', 'Korea', 'India', 'France', 'Japan', 'UK', 'Germany', 'Thailand', 'Quuba', 'UAE', 'Israel'];
-  const TRANSLATION_LANGUAGES = ['None', 'English', 'Spanish', 'French', 'German', 'Japanese', 'Korean', 'Hindi', 'Thai', 'Arabic'];
 
   let supabase;
   try { supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY); } 
@@ -690,7 +693,7 @@
     postsData: [],
     selectedDateStr: "",
     editingPostId: null,
-    selectedMediaUrls: [] // Now holds an array of selected URLs
+    selectedMediaUrls: []
   };
 
   /* ==========================================================================
@@ -705,9 +708,7 @@
 
   const populateSelectOptions = () => {
     const marketSelect = document.getElementById('market-select');
-    const langSelect = document.getElementById('language-select');
     TARGET_MARKETS.forEach(m => { const o = document.createElement('option'); o.value = m; o.textContent = m; marketSelect.appendChild(o); });
-    TRANSLATION_LANGUAGES.forEach(l => { const o = document.createElement('option'); o.value = l; o.textContent = l === 'None' ? 'None (Do not translate)' : l; langSelect.appendChild(o); });
   };
 
   const bindEventListeners = () => {
@@ -721,11 +722,14 @@
     document.getElementById('btn-delete').addEventListener('click', handleDeletePost);
     document.getElementById('btn-publish-now').addEventListener('click', handlePublishImmediately);
     
-    // Clear selections if they manually switch content type
-    document.getElementById('content-type').addEventListener('change', () => {
+    // Clear selections and show/hide disclaimer when content type changes
+    document.getElementById('content-type').addEventListener('change', (e) => {
       AppState.selectedMediaUrls = [];
       document.querySelectorAll('.media-card').forEach(c => c.classList.remove('selected'));
       renderMediaPreview();
+      
+      // Show disclaimer only if Video is selected
+      document.getElementById('video-disclaimer').style.display = e.target.value === 'Video' ? 'block' : 'none';
     });
   };
 
@@ -777,7 +781,6 @@
         const statusClass = post.is_posted ? 'status-posted' : '';
         const safeCaption = post.caption ? post.caption.substring(0, 15) : 'Untitled';
         
-        // Count how many images are in this post by counting commas in the saved string
         let imgCountStr = '';
         if (post.type === 'Image' && post.media_url) {
             const count = post.media_url.split(',').length;
@@ -841,7 +844,6 @@
         const card = document.createElement('div');
         card.className = 'media-card';
         
-        // Re-apply selection if this file is in our active state array
         if (AppState.selectedMediaUrls.includes(publicUrl)) {
           card.classList.add('selected');
         }
@@ -850,7 +852,6 @@
           ? `<video src="${publicUrl}"></video><span>${file.name}</span>`
           : `<img src="${publicUrl}" loading="lazy"><span>${file.name}</span>`;
 
-        // Selection Controller
         card.onclick = () => handleMediaSelection(publicUrl, isVideo, card);
         gallery.appendChild(card);
       });
@@ -861,31 +862,27 @@
   const handleMediaSelection = (url, isVideo, cardElement) => {
     const currentType = document.getElementById('content-type').value;
 
-    // AUTO-SWITCH safety mechanisms
     if (isVideo && currentType === 'Image') {
       document.getElementById('content-type').value = 'Video';
+      document.getElementById('video-disclaimer').style.display = 'block';
       AppState.selectedMediaUrls = [];
       document.querySelectorAll('.media-card').forEach(c => c.classList.remove('selected'));
     } else if (!isVideo && currentType === 'Video') {
       document.getElementById('content-type').value = 'Image';
+      document.getElementById('video-disclaimer').style.display = 'none';
       AppState.selectedMediaUrls = [];
       document.querySelectorAll('.media-card').forEach(c => c.classList.remove('selected'));
     }
 
-    // SELECTION LOGIC
     if (document.getElementById('content-type').value === 'Video') {
-      // Video limits to 1 selection exactly
       AppState.selectedMediaUrls = [url];
       document.querySelectorAll('.media-card').forEach(c => c.classList.remove('selected'));
       cardElement.classList.add('selected');
     } else {
-      // Image allows up to 6
       if (AppState.selectedMediaUrls.includes(url)) {
-        // Deselect
         AppState.selectedMediaUrls = AppState.selectedMediaUrls.filter(u => u !== url);
         cardElement.classList.remove('selected');
       } else {
-        // Select
         if (AppState.selectedMediaUrls.length >= 6) {
           showToast("Maximum of 6 images allowed for carousel posts.", "error");
           return;
@@ -913,13 +910,11 @@
       container.classList.remove('multi-image');
       container.innerHTML = `<video src="${AppState.selectedMediaUrls[0]}" controls autoplay muted style="width:100%; max-height:180px; object-fit:contain;"></video>`;
     } else {
-      // It's an image. If there are multiple, apply grid styling.
       if (AppState.selectedMediaUrls.length > 1) {
         container.classList.add('multi-image');
       } else {
         container.classList.remove('multi-image');
       }
-      
       container.innerHTML = AppState.selectedMediaUrls.map(url => `<img src="${url}" alt="Preview">`).join('');
     }
   };
@@ -941,6 +936,9 @@
     document.getElementById('btn-delete').style.display = 'none';
     document.getElementById('btn-publish-now').style.display = 'none';
     
+    // Hide disclaimer by default since 'Image' is default value
+    document.getElementById('video-disclaimer').style.display = 'none';
+    
     const modal = document.getElementById('post-modal');
     modal.style.display = 'flex';
     setTimeout(() => modal.classList.add('show'), 10);
@@ -957,14 +955,14 @@
     document.getElementById('content-type').value = postRecord.type;
     document.getElementById('post-caption').value = postRecord.caption || '';
     document.getElementById('schedule-time').value = postRecord.time;
-    
     document.getElementById('market-select').value = (postRecord.markets && postRecord.markets[0]) ? postRecord.markets[0] : 'US';
-    document.getElementById('language-select').value = (postRecord.langs && postRecord.langs[0]) ? postRecord.langs[0] : 'None';
+
+    // Show/hide disclaimer based on post type
+    document.getElementById('video-disclaimer').style.display = postRecord.type === 'Video' ? 'block' : 'none';
 
     const platforms = postRecord.platforms || [];
     document.querySelectorAll('input[name="platform"]').forEach(checkbox => { checkbox.checked = platforms.includes(checkbox.value); });
 
-    // Extract the saved comma-separated URLs into our array
     if (postRecord.media_url) {
       AppState.selectedMediaUrls = postRecord.media_url.split(',');
     } else {
@@ -973,7 +971,6 @@
     
     renderMediaPreview();
 
-    // Visually re-select the items in the grid if they exist
     document.querySelectorAll('.media-card').forEach(card => {
       card.classList.remove('selected');
       const mediaTag = card.querySelector('img, video');
@@ -1004,24 +1001,19 @@
     return {
       date: AppState.selectedDateStr,
       type: document.getElementById('content-type').value,
-      media_url: AppState.selectedMediaUrls.join(','), // Database saves as comma-separated string!
+      media_url: AppState.selectedMediaUrls.join(','), 
       caption: document.getElementById('post-caption').value,
       time: document.getElementById('schedule-time').value,
-      markets: [document.getElementById('market-select').value], 
-      langs: [document.getElementById('language-select').value],   
+      markets: [document.getElementById('market-select').value],   
       platforms: platforms
     };
   };
 
-  /**
-   * Prepares the enhanced Webhook payload explicitly formatting multiple images and count
-   */
   const buildWebhookPayload = (dbPayload, generatedId, actionStr) => {
     return {
       ...dbPayload,
       id: generatedId,
       action: actionStr,
-      // For Make.com/n8n: explicit array of URLs and total count
       media_urls_array: AppState.selectedMediaUrls,
       image_count: AppState.selectedMediaUrls.length
     };
@@ -1044,15 +1036,7 @@
       }
       if (dbResponse.error) throw dbResponse.error;
 
-      const selectedLanguage = payload.langs[0];
-      if (selectedLanguage !== 'None') {
-        const generatedId = dbResponse.data[0].id;
-        triggerExternalWebhook(WEBHOOKS.TRANSLATE, buildWebhookPayload(payload, generatedId, 'translate_only'));
-        showToast(`Saved. Auto-translation to ${selectedLanguage} triggered.`, "success");
-      } else {
-        showToast("Schedule successfully saved.", "success");
-      }
-
+      showToast("Schedule successfully saved.", "success");
       closeModal();
       await fetchPostsFromDatabase();
     } catch (error) { showToast(error.message, "error"); } 
