@@ -219,11 +219,18 @@
       filter: brightness(0.95);
     }
 
-    /* Color coding for posted vs scheduled */
     .post-badge.status-posted {
       border-left-color: var(--success-color);
       background-color: #f0fdf4;
       color: #166534;
+    }
+
+    .image-count-indicator {
+      font-size: 0.6rem;
+      background: rgba(0,0,0,0.1);
+      padding: 1px 4px;
+      border-radius: 4px;
+      margin-left: 4px;
     }
 
     /* ==========================================================================
@@ -327,7 +334,6 @@
       background-color: var(--surface-color);
     }
 
-    /* Platform Checkboxes */
     .checkbox-container {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
@@ -346,13 +352,6 @@
       cursor: pointer;
       font-weight: 600;
       color: var(--text-main);
-    }
-
-    .checkbox-item input[type="checkbox"] {
-      width: 18px;
-      height: 18px;
-      cursor: pointer;
-      accent-color: var(--accent-color);
     }
 
     /* ==========================================================================
@@ -409,6 +408,7 @@
       overflow: hidden;
       background-color: #f8fafc;
       transition: var(--transition);
+      position: relative;
     }
 
     .media-card.selected {
@@ -434,22 +434,34 @@
       font-weight: 600;
     }
 
+    /* Multi-Image Preview Container */
     .selected-preview {
       width: 100%;
-      height: 200px;
+      min-height: 200px;
       background-color: #000;
       border-radius: var(--radius-md);
       display: flex;
       align-items: center;
       justify-content: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 12px;
       margin-top: 16px;
-      overflow: hidden;
       box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
     }
 
     .selected-preview img, .selected-preview video {
       max-width: 100%;
-      max-height: 100%;
+      max-height: 180px;
+      object-fit: contain;
+      border-radius: 6px;
+    }
+
+    /* When multiple images are selected, switch to a grid look */
+    .selected-preview.multi-image img {
+      width: calc(33.333% - 8px);
+      height: 100px;
+      object-fit: cover;
     }
 
     /* ==========================================================================
@@ -478,25 +490,18 @@
       gap: 8px;
     }
 
-    .btn:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
     .btn-primary { background-color: var(--accent-color); color: white; }
     .btn-primary:hover:not(:disabled) { background-color: var(--accent-hover); }
-
     .btn-success { background-color: var(--success-color); color: white; }
     .btn-success:hover:not(:disabled) { background-color: var(--success-hover); }
-
     .btn-danger { background-color: var(--danger-color); color: white; margin-right: auto; }
     .btn-danger:hover:not(:disabled) { background-color: var(--danger-hover); }
-
     .btn-outline { background-color: transparent; border: 2px solid var(--border-color); color: var(--text-main); }
     .btn-outline:hover:not(:disabled) { background-color: #f1f5f9; border-color: #cbd5e1; }
 
     /* ==========================================================================
-       TOAST NOTIFICATIONS & LOADERS
+       TOAST NOTIFICATIONS
        ========================================================================== */
     #toast-container {
       position: fixed;
@@ -515,11 +520,7 @@
       align-items: center;
       gap: 12px;
     }
-
-    #toast-container.show {
-      transform: translateY(0);
-      opacity: 1;
-    }
+    #toast-container.show { transform: translateY(0); opacity: 1; }
 
     .loader {
       border: 3px solid #f3f3f3;
@@ -530,16 +531,15 @@
       animation: spin 1s linear infinite;
       margin: 20px auto;
     }
-
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-    /* Responsive */
     @media (max-width: 900px) {
       .form-layout { grid-template-columns: 1fr; }
       .form-group.full-width { grid-column: span 1; }
       .app-header { flex-direction: column; gap: 16px; }
       .modal-actions { flex-wrap: wrap; }
       .btn-danger { margin-right: 0; width: 100%; order: 4; }
+      .selected-preview.multi-image img { width: calc(50% - 8px); }
     }
   </style>
 </head>
@@ -557,29 +557,17 @@
   </header>
 
   <section class="calendar-controls">
-    <button class="control-btn" id="btn-prev-month" title="Previous Month">
-      <i class="fa-solid fa-chevron-left"></i>
-    </button>
+    <button class="control-btn" id="btn-prev-month" title="Previous Month"><i class="fa-solid fa-chevron-left"></i></button>
     <div class="month-display" id="current-month-display">Loading Calendar...</div>
     <div style="display: flex; gap: 12px;">
-      <button class="control-btn" id="btn-refresh" title="Sync with Database">
-        <i class="fa-solid fa-rotate"></i>
-      </button>
-      <button class="control-btn" id="btn-next-month" title="Next Month">
-        <i class="fa-solid fa-chevron-right"></i>
-      </button>
+      <button class="control-btn" id="btn-refresh" title="Sync with Database"><i class="fa-solid fa-rotate"></i></button>
+      <button class="control-btn" id="btn-next-month" title="Next Month"><i class="fa-solid fa-chevron-right"></i></button>
     </div>
   </section>
 
   <main class="calendar-wrapper">
     <div class="weekdays-header">
-      <div>SUNDAY</div>
-      <div>MONDAY</div>
-      <div>TUESDAY</div>
-      <div>WEDNESDAY</div>
-      <div>THURSDAY</div>
-      <div>FRIDAY</div>
-      <div>SATURDAY</div>
+      <div>SUNDAY</div><div>MONDAY</div><div>TUESDAY</div><div>WEDNESDAY</div><div>THURSDAY</div><div>FRIDAY</div><div>SATURDAY</div>
     </div>
     <div class="days-grid" id="calendar-grid-body">
       </div>
@@ -599,7 +587,7 @@
         <div class="form-group full-width">
           <label for="content-type"><i class="fa-solid fa-photo-film"></i> Content Format</label>
           <select id="content-type" required>
-            <option value="Image">📸 Static Image</option>
+            <option value="Image">📸 Static Image / Carousel (Up to 6)</option>
             <option value="Video">🎥 Short-Form Video</option>
           </select>
         </div>
@@ -607,8 +595,7 @@
         <div class="form-group full-width">
           <label><i class="fa-solid fa-server"></i> Supabase Storage Library</label>
           <div class="media-explorer">
-            <div class="bucket-navigation" id="bucket-tabs-container">
-              </div>
+            <div class="bucket-navigation" id="bucket-tabs-container"></div>
             <div class="file-gallery" id="storage-files-container">
               <div class="loader"></div>
             </div>
@@ -617,7 +604,6 @@
           <div class="selected-preview" id="media-preview-container">
             <span style="color: #64748b; font-weight: 600;">No media selected</span>
           </div>
-          <input type="hidden" id="hidden-media-url" required>
         </div>
 
         <div class="form-group full-width">
@@ -632,8 +618,7 @@
 
         <div class="form-group">
           <label for="market-select"><i class="fa-solid fa-globe"></i> Target Market (Select One)</label>
-          <select id="market-select" required>
-            </select>
+          <select id="market-select" required></select>
         </div>
 
         <div class="form-group full-width">
@@ -649,8 +634,7 @@
 
         <div class="form-group full-width">
           <label for="language-select"><i class="fa-solid fa-language"></i> Automation: Auto-Translate To (Select One)</label>
-          <select id="language-select">
-            </select>
+          <select id="language-select"></select>
           <small style="color: var(--text-muted); margin-top: 4px; display: block;">
             Selecting a language (other than None) will trigger the translation webhook upon saving.
           </small>
@@ -659,18 +643,10 @@
       </div>
 
       <div class="modal-actions">
-        <button type="button" class="btn btn-danger" id="btn-delete" style="display:none;">
-          <i class="fa-solid fa-trash"></i> Delete
-        </button>
-        <button type="button" class="btn btn-outline" id="btn-cancel">
-          Cancel
-        </button>
-        <button type="button" class="btn btn-success" id="btn-publish-now" style="display:none;" title="Overrides schedule and posts immediately">
-          <i class="fa-solid fa-paper-plane"></i> Publish Now
-        </button>
-        <button type="submit" class="btn btn-primary" id="btn-save-schedule" title="Saves to database. Will be posted later by automation.">
-          <i class="fa-solid fa-floppy-disk"></i> Save Schedule
-        </button>
+        <button type="button" class="btn btn-danger" id="btn-delete" style="display:none;"><i class="fa-solid fa-trash"></i> Delete</button>
+        <button type="button" class="btn btn-outline" id="btn-cancel">Cancel</button>
+        <button type="button" class="btn btn-success" id="btn-publish-now" style="display:none;" title="Overrides schedule and posts immediately"><i class="fa-solid fa-paper-plane"></i> Publish Now</button>
+        <button type="submit" class="btn btn-primary" id="btn-save-schedule"><i class="fa-solid fa-floppy-disk"></i> Save Schedule</button>
       </div>
     </form>
   </div>
@@ -682,56 +658,44 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
 <script>
 (function() {
   'use strict';
 
   /* ==========================================================================
-     CONFIGURATION & CONSTANTS
+     CONFIGURATION
      ========================================================================== */
-  
-  // Webhooks for n8n/Zapier integration
   const WEBHOOKS = {
     TRANSLATE: "https://your-n8n-url.com/webhook/translate-caption",
     PUBLISH_NOW: "https://your-n8n-url.com/webhook/publish-immediately"
   };
   
-  // Supabase Credentials
   const SUPABASE_URL = "https://merpsvkfmjbugrgnwwlq.supabase.co";
   const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1lcnBzdmtmbWpidWdyZ253d2xxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE4NzcyMDksImV4cCI6MjA3NzQ1MzIwOX0.HYqgv5VFQxQ0E1QsxXYLLXu_r6LguyAEaErDSkHUc88";
   
-  // Dropdown Options
-  const STORAGE_BUCKETS = ['ShortForm', 'ShortVideo', 'carousel-image', 'carouselvideo'];
+  // RESTRICTED BUCKETS
+  const STORAGE_BUCKETS = ['ShortForm', 'carousel-image'];
   const TARGET_MARKETS = ['US', 'Korea', 'India', 'France', 'Japan', 'UK', 'Germany', 'Thailand', 'Quuba', 'UAE', 'Israel'];
   const TRANSLATION_LANGUAGES = ['None', 'English', 'Spanish', 'French', 'German', 'Japanese', 'Korean', 'Hindi', 'Thai', 'Arabic'];
 
-  // Initialize Supabase Client
   let supabase;
-  try {
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-  } catch (error) {
-    console.error("Failed to initialize Supabase:", error);
-    alert("Critical Error: Database connection failed. Check console.");
-  }
+  try { supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY); } 
+  catch (error) { console.error("Failed to initialize Supabase:", error); }
 
   /* ==========================================================================
-     APPLICATION STATE
+     STATE
      ========================================================================== */
   const AppState = {
     currentDate: new Date(),
-    postsData: [],       // Holds all records fetched from the 'posts' table
-    selectedDateStr: "", // Format: YYYY-MM-DD
-    editingPostId: null  // UUID of the post being edited, or null if creating new
+    postsData: [],
+    selectedDateStr: "",
+    editingPostId: null,
+    selectedMediaUrls: [] // Now holds an array of selected URLs
   };
 
   /* ==========================================================================
-     INITIALIZATION & SETUP
+     INIT & SETUP
      ========================================================================== */
-  
-  /**
-   * Bootstraps the application on load
-   */
   const initApp = async () => {
     populateSelectOptions();
     buildStorageTabs();
@@ -739,115 +703,66 @@
     await fetchPostsFromDatabase();
   };
 
-  /**
-   * Injects options into the strictly Single-Select dropdowns
-   */
   const populateSelectOptions = () => {
     const marketSelect = document.getElementById('market-select');
     const langSelect = document.getElementById('language-select');
-
-    TARGET_MARKETS.forEach(market => {
-      const opt = document.createElement('option');
-      opt.value = market;
-      opt.textContent = market;
-      marketSelect.appendChild(opt);
-    });
-
-    TRANSLATION_LANGUAGES.forEach(lang => {
-      const opt = document.createElement('option');
-      opt.value = lang;
-      opt.textContent = lang === 'None' ? 'None (Do not translate)' : lang;
-      langSelect.appendChild(opt);
-    });
+    TARGET_MARKETS.forEach(m => { const o = document.createElement('option'); o.value = m; o.textContent = m; marketSelect.appendChild(o); });
+    TRANSLATION_LANGUAGES.forEach(l => { const o = document.createElement('option'); o.value = l; o.textContent = l === 'None' ? 'None (Do not translate)' : l; langSelect.appendChild(o); });
   };
 
-  /**
-   * Binds UI events to controller functions
-   */
   const bindEventListeners = () => {
-    // Calendar Navigation
     document.getElementById('btn-prev-month').addEventListener('click', () => changeMonth(-1));
     document.getElementById('btn-next-month').addEventListener('click', () => changeMonth(1));
     document.getElementById('btn-refresh').addEventListener('click', fetchPostsFromDatabase);
-
-    // Modal Controls
     document.getElementById('btn-close-modal').addEventListener('click', closeModal);
     document.getElementById('btn-cancel').addEventListener('click', closeModal);
-    
-    // Outside click for modal
-    document.getElementById('post-modal').addEventListener('click', (e) => {
-      if (e.target.id === 'post-modal') closeModal();
-    });
-
-    // Form Submissions and Actions
+    document.getElementById('post-modal').addEventListener('click', (e) => { if (e.target.id === 'post-modal') closeModal(); });
     document.getElementById('schedule-form').addEventListener('submit', handleSaveSchedule);
     document.getElementById('btn-delete').addEventListener('click', handleDeletePost);
     document.getElementById('btn-publish-now').addEventListener('click', handlePublishImmediately);
+    
+    // Clear selections if they manually switch content type
+    document.getElementById('content-type').addEventListener('change', () => {
+      AppState.selectedMediaUrls = [];
+      document.querySelectorAll('.media-card').forEach(c => c.classList.remove('selected'));
+      renderMediaPreview();
+    });
   };
 
   /* ==========================================================================
-     DATABASE OPERATIONS (SUPABASE)
+     DATABASE & CALENDAR RENDERING
      ========================================================================== */
-
-  /**
-   * Fetches all posts from the Supabase 'posts' table and triggers a calendar render.
-   */
   const fetchPostsFromDatabase = async () => {
-    showToast("Syncing with database...", "info");
     try {
-      const { data, error } = await supabase
-        .from('posts')
-        .select('*')
-        .order('time', { ascending: true });
-
+      const { data, error } = await supabase.from('posts').select('*').order('time', { ascending: true });
       if (error) throw error;
-      
       AppState.postsData = data || [];
       renderCalendarGrid();
-      showToast("Sync complete.", "success");
-    } catch (error) {
-      console.error("Fetch Error:", error);
-      showToast("Error fetching database: " + error.message, "error");
-    }
+    } catch (error) { showToast("Error fetching database: " + error.message, "error"); }
   };
 
-  /* ==========================================================================
-     CALENDAR UI RENDERING
-     ========================================================================== */
-
-  /**
-   * Adjusts the current month and re-renders
-   */
   const changeMonth = (offset) => {
     AppState.currentDate.setMonth(AppState.currentDate.getMonth() + offset);
     renderCalendarGrid();
   };
 
-  /**
-   * Core rendering logic for the calendar grid based on AppState.currentDate
-   */
   const renderCalendarGrid = () => {
     const year = AppState.currentDate.getFullYear();
     const month = AppState.currentDate.getMonth();
-    
-    // Update Header Text
     const formatter = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' });
     document.getElementById('current-month-display').textContent = formatter.format(AppState.currentDate);
     
     const firstDayIndex = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-    
     const gridBody = document.getElementById('calendar-grid-body');
-    gridBody.innerHTML = ''; // Clear existing
+    gridBody.innerHTML = '';
 
-    // 1. Render empty cells for offset days before the 1st
     for (let i = 0; i < firstDayIndex; i++) {
       const emptyCell = document.createElement('div');
       emptyCell.className = 'day-cell empty-cell';
       gridBody.appendChild(emptyCell);
     }
 
-    // 2. Render actual days of the month
     for (let day = 1; day <= daysInMonth; day++) {
       const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       const postsForThisDay = AppState.postsData.filter(post => post.date === dateString);
@@ -862,9 +777,16 @@
         const statusClass = post.is_posted ? 'status-posted' : '';
         const safeCaption = post.caption ? post.caption.substring(0, 15) : 'Untitled';
         
+        // Count how many images are in this post by counting commas in the saved string
+        let imgCountStr = '';
+        if (post.type === 'Image' && post.media_url) {
+            const count = post.media_url.split(',').length;
+            if (count > 1) imgCountStr = `<span class="image-count-indicator">+${count}</span>`;
+        }
+
         cellHTML += `
           <div class="post-badge ${statusClass}" onclick="event.stopPropagation(); window.openEditModal('${post.id}')" title="Click to edit">
-            ${icon} ${safeCaption}...
+            ${icon} ${safeCaption}... ${imgCountStr}
           </div>
         `;
       });
@@ -876,12 +798,8 @@
   };
 
   /* ==========================================================================
-     MEDIA LIBRARY (STORAGE) RENDERING
+     MEDIA LIBRARY & SELECTION LOGIC
      ========================================================================== */
-
-  /**
-   * Renders the Bucket Navigation Tabs
-   */
   const buildStorageTabs = () => {
     const navContainer = document.getElementById('bucket-tabs-container');
     navContainer.innerHTML = '';
@@ -891,54 +809,40 @@
       btn.type = 'button';
       btn.className = `bucket-tab ${index === 0 ? 'active' : ''}`;
       btn.textContent = bucketName;
-      
       btn.onclick = (e) => {
         e.preventDefault();
         document.querySelectorAll('.bucket-tab').forEach(t => t.classList.remove('active'));
         btn.classList.add('active');
         fetchFilesInBucket(bucketName);
       };
-      
       navContainer.appendChild(btn);
     });
 
-    if (STORAGE_BUCKETS.length > 0) {
-      fetchFilesInBucket(STORAGE_BUCKETS[0]);
-    }
+    if (STORAGE_BUCKETS.length > 0) fetchFilesInBucket(STORAGE_BUCKETS[0]);
   };
 
-  /**
-   * Fetches and renders files from a specific Supabase Storage Bucket
-   */
   const fetchFilesInBucket = async (bucketName) => {
     const gallery = document.getElementById('storage-files-container');
     gallery.innerHTML = '<div class="loader"></div>';
 
     try {
       const { data, error } = await supabase.storage.from(bucketName).list();
-      
       if (error) throw error;
-      if (!data || data.length === 0) {
-        gallery.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); margin-top: 20px;">Folder is empty</div>';
-        return;
-      }
+      if (!data || data.length === 0) return gallery.innerHTML = '<div style="grid-column: 1/-1; text-align: center;">Folder is empty</div>';
 
-      gallery.innerHTML = ''; // Clear loader
+      gallery.innerHTML = '';
       const validFiles = data.filter(f => !f.name.startsWith('.'));
-      
-      // Get the currently selected media URL to persist highlight when switching tabs
-      const currentSelectedUrl = document.getElementById('hidden-media-url').value;
 
       validFiles.forEach(file => {
         const { data: urlData } = supabase.storage.from(bucketName).getPublicUrl(file.name);
         const publicUrl = urlData.publicUrl;
-        const isVideo = file.name.match(/\.(mp4|mov|webm)$/i);
+        const isVideo = !!file.name.match(/\.(mp4|mov|webm)$/i);
         
         const card = document.createElement('div');
         card.className = 'media-card';
         
-        // Ensure previously saved/selected image stays highlighted in the grid
-        if (publicUrl === currentSelectedUrl) {
+        // Re-apply selection if this file is in our active state array
+        if (AppState.selectedMediaUrls.includes(publicUrl)) {
           card.classList.add('selected');
         }
 
@@ -946,68 +850,102 @@
           ? `<video src="${publicUrl}"></video><span>${file.name}</span>`
           : `<img src="${publicUrl}" loading="lazy"><span>${file.name}</span>`;
 
-        card.onclick = () => {
-          document.querySelectorAll('.media-card').forEach(c => c.classList.remove('selected'));
-          card.classList.add('selected');
-          selectMediaFile(publicUrl, isVideo);
-        };
-
+        // Selection Controller
+        card.onclick = () => handleMediaSelection(publicUrl, isVideo, card);
         gallery.appendChild(card);
       });
 
-    } catch (error) {
-      console.error("Storage Error:", error);
-      gallery.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--danger-color);">Failed to load files: ${error.message}</div>`;
+    } catch (error) { gallery.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--danger-color);">Failed to load files: ${error.message}</div>`; }
+  };
+
+  const handleMediaSelection = (url, isVideo, cardElement) => {
+    const currentType = document.getElementById('content-type').value;
+
+    // AUTO-SWITCH safety mechanisms
+    if (isVideo && currentType === 'Image') {
+      document.getElementById('content-type').value = 'Video';
+      AppState.selectedMediaUrls = [];
+      document.querySelectorAll('.media-card').forEach(c => c.classList.remove('selected'));
+    } else if (!isVideo && currentType === 'Video') {
+      document.getElementById('content-type').value = 'Image';
+      AppState.selectedMediaUrls = [];
+      document.querySelectorAll('.media-card').forEach(c => c.classList.remove('selected'));
+    }
+
+    // SELECTION LOGIC
+    if (document.getElementById('content-type').value === 'Video') {
+      // Video limits to 1 selection exactly
+      AppState.selectedMediaUrls = [url];
+      document.querySelectorAll('.media-card').forEach(c => c.classList.remove('selected'));
+      cardElement.classList.add('selected');
+    } else {
+      // Image allows up to 6
+      if (AppState.selectedMediaUrls.includes(url)) {
+        // Deselect
+        AppState.selectedMediaUrls = AppState.selectedMediaUrls.filter(u => u !== url);
+        cardElement.classList.remove('selected');
+      } else {
+        // Select
+        if (AppState.selectedMediaUrls.length >= 6) {
+          showToast("Maximum of 6 images allowed for carousel posts.", "error");
+          return;
+        }
+        AppState.selectedMediaUrls.push(url);
+        cardElement.classList.add('selected');
+      }
+    }
+    
+    renderMediaPreview();
+  };
+
+  const renderMediaPreview = () => {
+    const container = document.getElementById('media-preview-container');
+    
+    if (AppState.selectedMediaUrls.length === 0) {
+      container.innerHTML = '<span style="color: #64748b; font-weight: 600;">No media selected</span>';
+      container.classList.remove('multi-image');
+      return;
+    }
+
+    const currentType = document.getElementById('content-type').value;
+    
+    if (currentType === 'Video') {
+      container.classList.remove('multi-image');
+      container.innerHTML = `<video src="${AppState.selectedMediaUrls[0]}" controls autoplay muted style="width:100%; max-height:180px; object-fit:contain;"></video>`;
+    } else {
+      // It's an image. If there are multiple, apply grid styling.
+      if (AppState.selectedMediaUrls.length > 1) {
+        container.classList.add('multi-image');
+      } else {
+        container.classList.remove('multi-image');
+      }
+      
+      container.innerHTML = AppState.selectedMediaUrls.map(url => `<img src="${url}" alt="Preview">`).join('');
     }
   };
 
-  /**
-   * Handles the UI updates when a file is selected from the library
-   */
-  const selectMediaFile = (url, isVideo) => {
-    document.getElementById('hidden-media-url').value = url;
-    const previewContainer = document.getElementById('media-preview-container');
-    
-    if (isVideo) {
-      previewContainer.innerHTML = `<video src="${url}" controls autoplay muted></video>`;
-    } else {
-      previewContainer.innerHTML = `<img src="${url}" alt="Selected Media Preview">`;
-    }
-  };
 
   /* ==========================================================================
      MODAL CONTROLS & FORM HANDLING
      ========================================================================== */
-
-  /**
-   * Opens the modal in "Create" mode for a specific date
-   */
   const openCreateModal = (dateStr) => {
     AppState.editingPostId = null;
     AppState.selectedDateStr = dateStr;
+    AppState.selectedMediaUrls = [];
     
-    // Reset Form
     document.getElementById('schedule-form').reset();
-    document.getElementById('hidden-media-url').value = '';
-    document.getElementById('media-preview-container').innerHTML = '<span style="color: #64748b; font-weight: 600;">No media selected</span>';
-    
-    // -> FIX: Clear any visually selected highlights from the grid
     document.querySelectorAll('.media-card').forEach(card => card.classList.remove('selected'));
+    renderMediaPreview();
     
-    // Update UI headers/buttons
     document.getElementById('modal-title-text').innerHTML = `<i class="fa-solid fa-calendar-plus"></i> Schedule for ${dateStr}`;
     document.getElementById('btn-delete').style.display = 'none';
     document.getElementById('btn-publish-now').style.display = 'none';
     
-    // Show Modal
     const modal = document.getElementById('post-modal');
     modal.style.display = 'flex';
     setTimeout(() => modal.classList.add('show'), 10);
   };
 
-  /**
-   * Opens the modal in "Edit" mode, populated with existing database data.
-   */
   window.openEditModal = (postId) => {
     const postRecord = AppState.postsData.find(p => p.id === postId);
     if (!postRecord) return;
@@ -1015,104 +953,88 @@
     AppState.editingPostId = postId;
     AppState.selectedDateStr = postRecord.date;
 
-    // Populate Fields
     document.getElementById('modal-title-text').innerHTML = `<i class="fa-solid fa-pen-to-square"></i> Edit Post`;
     document.getElementById('content-type').value = postRecord.type;
     document.getElementById('post-caption').value = postRecord.caption || '';
     document.getElementById('schedule-time').value = postRecord.time;
     
-    // Set Single Selects
     document.getElementById('market-select').value = (postRecord.markets && postRecord.markets[0]) ? postRecord.markets[0] : 'US';
     document.getElementById('language-select').value = (postRecord.langs && postRecord.langs[0]) ? postRecord.langs[0] : 'None';
 
-    // Set Multi-Select Platforms
     const platforms = postRecord.platforms || [];
-    document.querySelectorAll('input[name="platform"]').forEach(checkbox => {
-      checkbox.checked = platforms.includes(checkbox.value);
-    });
+    document.querySelectorAll('input[name="platform"]').forEach(checkbox => { checkbox.checked = platforms.includes(checkbox.value); });
 
-    // -> FIX: Properly load and force the preview image/video
-    const mediaUrl = postRecord.media_url;
-    document.getElementById('hidden-media-url').value = mediaUrl;
-    
-    // Robust check for Video format to prevent broken previews
-    const isVideo = postRecord.type === 'Video' || mediaUrl.match(/\.(mp4|mov|webm)$/i);
-    const previewContainer = document.getElementById('media-preview-container');
-    
-    if (isVideo) {
-      previewContainer.innerHTML = `<video src="${mediaUrl}" controls></video>`;
+    // Extract the saved comma-separated URLs into our array
+    if (postRecord.media_url) {
+      AppState.selectedMediaUrls = postRecord.media_url.split(',');
     } else {
-      previewContainer.innerHTML = `<img src="${mediaUrl}" alt="Selected Media Preview">`;
+      AppState.selectedMediaUrls = [];
     }
+    
+    renderMediaPreview();
 
-    // -> FIX: Locate this specific file in the browser grid and re-apply the blue selection ring
+    // Visually re-select the items in the grid if they exist
     document.querySelectorAll('.media-card').forEach(card => {
       card.classList.remove('selected');
       const mediaTag = card.querySelector('img, video');
-      if (mediaTag && mediaTag.src === mediaUrl) {
+      if (mediaTag && AppState.selectedMediaUrls.includes(mediaTag.src)) {
         card.classList.add('selected');
       }
     });
 
-    // Toggle Button Visibility
     document.getElementById('btn-delete').style.display = 'inline-flex';
     document.getElementById('btn-publish-now').style.display = 'inline-flex';
 
-    // Show Modal
     const modal = document.getElementById('post-modal');
     modal.style.display = 'flex';
     setTimeout(() => modal.classList.add('show'), 10);
   };
 
-  /**
-   * Closes the modal with a smooth animation
-   */
   const closeModal = () => {
     const modal = document.getElementById('post-modal');
     modal.classList.remove('show');
-    // Wait for animation to finish before hiding
-    setTimeout(() => {
-      modal.style.display = 'none';
-    }, 300);
+    setTimeout(() => { modal.style.display = 'none'; }, 300);
   };
 
-  /**
-   * Extracts form data into an object ready for Supabase/Webhooks
-   */
   const getFormData = () => {
-    const mediaUrl = document.getElementById('hidden-media-url').value;
-    if (!mediaUrl) throw new Error("You must select a media file from the storage library.");
-
+    if (AppState.selectedMediaUrls.length === 0) throw new Error("You must select media from the storage library.");
     const platforms = Array.from(document.querySelectorAll('input[name="platform"]:checked')).map(cb => cb.value);
     if (platforms.length === 0) throw new Error("You must select at least one distribution platform.");
 
     return {
       date: AppState.selectedDateStr,
       type: document.getElementById('content-type').value,
-      media_url: mediaUrl,
+      media_url: AppState.selectedMediaUrls.join(','), // Database saves as comma-separated string!
       caption: document.getElementById('post-caption').value,
       time: document.getElementById('schedule-time').value,
-      markets: [document.getElementById('market-select').value], // Array format for jsonb column
-      langs: [document.getElementById('language-select').value],   // Array format for jsonb column
+      markets: [document.getElementById('market-select').value], 
+      langs: [document.getElementById('language-select').value],   
       platforms: platforms
     };
   };
 
   /**
-   * ACTION: Save Schedule
+   * Prepares the enhanced Webhook payload explicitly formatting multiple images and count
    */
+  const buildWebhookPayload = (dbPayload, generatedId, actionStr) => {
+    return {
+      ...dbPayload,
+      id: generatedId,
+      action: actionStr,
+      // For Make.com/n8n: explicit array of URLs and total count
+      media_urls_array: AppState.selectedMediaUrls,
+      image_count: AppState.selectedMediaUrls.length
+    };
+  };
+
   const handleSaveSchedule = async (e) => {
     e.preventDefault();
-    
     try {
       const payload = getFormData();
-      // Ensure it stays scheduled, not posted
       payload.is_posted = false;
 
-      // Lock submit button
       const saveBtn = document.getElementById('btn-save-schedule');
-      saveBtn.disabled = true;
-      saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+      saveBtn.disabled = true; saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
 
       let dbResponse;
       if (AppState.editingPostId) {
@@ -1120,137 +1042,92 @@
       } else {
         dbResponse = await supabase.from('posts').insert([payload]).select();
       }
-
       if (dbResponse.error) throw dbResponse.error;
 
       const selectedLanguage = payload.langs[0];
       if (selectedLanguage !== 'None') {
         const generatedId = dbResponse.data[0].id;
-        triggerExternalWebhook(WEBHOOKS.TRANSLATE, { ...payload, id: generatedId, action: 'translate_only' });
+        triggerExternalWebhook(WEBHOOKS.TRANSLATE, buildWebhookPayload(payload, generatedId, 'translate_only'));
         showToast(`Saved. Auto-translation to ${selectedLanguage} triggered.`, "success");
       } else {
-        showToast("Schedule successfully saved to Database.", "success");
+        showToast("Schedule successfully saved.", "success");
       }
 
       closeModal();
       await fetchPostsFromDatabase();
-
-    } catch (error) {
-      showToast(error.message, "error");
-    } finally {
+    } catch (error) { showToast(error.message, "error"); } 
+    finally {
       const saveBtn = document.getElementById('btn-save-schedule');
-      saveBtn.disabled = false;
-      saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save Schedule';
+      saveBtn.disabled = false; saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save Schedule';
     }
   };
 
-  /**
-   * ACTION: Publish Now
-   */
   const handlePublishImmediately = async () => {
     if (!AppState.editingPostId) return;
-
-    if (!confirm("Warning: This will override the schedule and publish the content to all selected platforms right now. Proceed?")) {
-      return;
-    }
+    if (!confirm("Override schedule and publish to platforms right now?")) return;
 
     try {
       const payload = getFormData();
       payload.is_posted = true; 
 
       const pubBtn = document.getElementById('btn-publish-now');
-      pubBtn.disabled = true;
-      pubBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Publishing...';
+      pubBtn.disabled = true; pubBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Publishing...';
 
       const { data, error } = await supabase.from('posts').update(payload).eq('id', AppState.editingPostId).select();
       if (error) throw error;
 
-      const postRecord = data[0];
-      triggerExternalWebhook(WEBHOOKS.PUBLISH_NOW, { ...postRecord, action: 'publish_immediately' });
+      triggerExternalWebhook(WEBHOOKS.PUBLISH_NOW, buildWebhookPayload(payload, AppState.editingPostId, 'publish_immediately'));
 
       showToast("Publishing sequence initiated!", "success");
       closeModal();
       await fetchPostsFromDatabase();
 
-    } catch (error) {
-      showToast("Failed to publish: " + error.message, "error");
-    } finally {
+    } catch (error) { showToast("Failed to publish: " + error.message, "error"); } 
+    finally {
       const pubBtn = document.getElementById('btn-publish-now');
-      pubBtn.disabled = false;
-      pubBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Publish Now';
+      pubBtn.disabled = false; pubBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Publish Now';
     }
   };
 
-  /**
-   * ACTION: Delete
-   */
   const handleDeletePost = async () => {
     if (!AppState.editingPostId) return;
-    
-    if (confirm("Are you sure you want to permanently delete this scheduled post from the database?")) {
+    if (confirm("Permanently delete this scheduled post?")) {
       try {
-        const delBtn = document.getElementById('btn-delete');
-        delBtn.disabled = true;
-
+        document.getElementById('btn-delete').disabled = true;
         const { error } = await supabase.from('posts').delete().eq('id', AppState.editingPostId);
         if (error) throw error;
-
-        showToast("Post successfully deleted.", "success");
+        showToast("Post deleted.", "success");
         closeModal();
         await fetchPostsFromDatabase();
-
-      } catch (error) {
-        showToast("Deletion failed: " + error.message, "error");
-      } finally {
-        document.getElementById('btn-delete').disabled = false;
-      }
+      } catch (error) { showToast("Deletion failed: " + error.message, "error"); } 
+      finally { document.getElementById('btn-delete').disabled = false; }
     }
   };
 
   /* ==========================================================================
-     UTILITY FUNCTIONS
+     UTILITIES
      ========================================================================== */
-
-  /**
-   * Fires an asynchronous POST request to external automation tools (n8n/Zapier)
-   */
   const triggerExternalWebhook = (url, payloadData) => {
     fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payloadData)
-    })
-    .then(res => console.log(`Webhook Triggered [${url}]: Status ${res.status}`))
-    .catch(err => console.warn("Webhook communication error:", err));
+    }).catch(err => console.warn("Webhook network issue:", err));
   };
 
-  /**
-   * Displays the toast notification with dynamic colors
-   */
   const showToast = (message, type = 'info') => {
     const container = document.getElementById('toast-container');
     const msgEl = document.getElementById('toast-message');
     const iconEl = document.getElementById('toast-icon');
 
     iconEl.className = 'fa-solid ';
-    
-    if (type === 'error') {
-      container.style.backgroundColor = 'var(--danger-color)';
-      iconEl.className += 'fa-circle-xmark';
-    } else if (type === 'success') {
-      container.style.backgroundColor = 'var(--success-color)';
-      iconEl.className += 'fa-circle-check';
-    } else {
-      container.style.backgroundColor = 'var(--primary-color)';
-      iconEl.className += 'fa-circle-info';
-    }
+    if (type === 'error') { container.style.backgroundColor = 'var(--danger-color)'; iconEl.className += 'fa-circle-xmark'; } 
+    else if (type === 'success') { container.style.backgroundColor = 'var(--success-color)'; iconEl.className += 'fa-circle-check'; } 
+    else { container.style.backgroundColor = 'var(--primary-color)'; iconEl.className += 'fa-circle-info'; }
 
     msgEl.textContent = message;
     container.classList.add('show');
-    
-    setTimeout(() => {
-      container.classList.remove('show');
-    }, 3500);
+    setTimeout(() => { container.classList.remove('show'); }, 3500);
   };
 
   document.addEventListener('DOMContentLoaded', initApp);
