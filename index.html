@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
   <title>Content Studio Pro | Enterprise Sync</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     /* ==========================================================================
-       ENHANCED RESPONSIVE CSS – MEDIA SELECTOR FULLY RESPONSIVE
+       FULLY RESPONSIVE: CALENDAR (HORIZONTAL SCROLL ON MOBILE) + MEDIA SELECTOR
        ========================================================================== */
     :root {
       --primary-color: #0f172a;
@@ -61,6 +61,8 @@
       align-items: center;
       margin-bottom: 24px;
       box-shadow: var(--shadow-md);
+      flex-wrap: wrap;
+      gap: 16px;
     }
 
     .app-header h1 {
@@ -99,6 +101,8 @@
       margin-bottom: 24px;
       border: 1px solid var(--border-color);
       box-shadow: var(--shadow-sm);
+      flex-wrap: wrap;
+      gap: 12px;
     }
 
     .month-display {
@@ -130,12 +134,21 @@
       background-color: #eff6ff;
     }
 
+    /* ========== CALENDAR: HORIZONTAL SCROLL ON MOBILE (NO CUTOFF) ========== */
     .calendar-wrapper {
+      width: 100%;
+      overflow-x: auto;
+      overflow-y: visible;
+      -webkit-overflow-scrolling: touch;
       background-color: var(--surface-color);
       border-radius: var(--radius-lg);
-      overflow: hidden;
       border: 1px solid var(--border-color);
       box-shadow: var(--shadow-md);
+    }
+
+    .calendar-grid {
+      min-width: 700px;
+      width: 100%;
     }
 
     .weekdays-header {
@@ -157,14 +170,15 @@
     }
 
     .day-cell {
-      min-height: 160px;
+      min-height: 140px;
       border-right: 1px solid var(--border-color);
       border-bottom: 1px solid var(--border-color);
-      padding: 12px;
+      padding: 8px;
       cursor: pointer;
       transition: var(--transition);
       background-color: var(--surface-color);
       position: relative;
+      overflow-y: auto;
     }
 
     .day-cell:hover {
@@ -178,9 +192,9 @@
 
     .day-number {
       font-weight: 800;
-      font-size: 1.1rem;
+      font-size: 1rem;
       color: var(--text-muted);
-      margin-bottom: 8px;
+      margin-bottom: 6px;
       display: block;
     }
 
@@ -191,16 +205,19 @@
     .post-badge {
       background-color: #eff6ff;
       border-left: 4px solid var(--accent-color);
-      padding: 6px 8px;
+      padding: 5px 6px;
       border-radius: var(--radius-sm);
-      font-size: 0.75rem;
-      margin-bottom: 6px;
-      white-space: nowrap;
+      font-size: 0.7rem;
+      margin-bottom: 5px;
+      white-space: normal;
+      word-break: break-word;
       overflow: hidden;
       text-overflow: ellipsis;
       font-weight: 600;
       color: #1e3a8a;
       transition: var(--transition);
+      line-height: 1.3;
+      cursor: pointer;
     }
 
     .post-badge:hover {
@@ -221,6 +238,7 @@
       margin-left: 4px;
     }
 
+    /* Modal styles */
     .modal-overlay {
       display: none;
       position: fixed;
@@ -264,10 +282,11 @@
       margin-bottom: 24px;
       padding-bottom: 16px;
       border-bottom: 1px solid var(--border-color);
+      flex-wrap: wrap;
     }
 
     .modal-title {
-      font-size: 1.5rem;
+      font-size: 1.3rem;
       font-weight: 800;
       color: var(--primary-color);
     }
@@ -351,7 +370,7 @@
       font-weight: 600;
     }
 
-    /* ========== ENHANCED MEDIA EXPLORER (RESPONSIVE) ========== */
+    /* Media Explorer */
     .media-explorer {
       border: 2px solid var(--border-color);
       border-radius: var(--radius-md);
@@ -360,13 +379,11 @@
       background: var(--surface-color);
     }
 
-    /* Bucket navigation: smooth horizontal scroll on all devices */
     .bucket-navigation {
       display: flex;
       background-color: #f1f5f9;
       border-bottom: 2px solid var(--border-color);
       overflow-x: auto;
-      overflow-y: hidden;
       -webkit-overflow-scrolling: touch;
       scrollbar-width: thin;
       white-space: nowrap;
@@ -392,7 +409,6 @@
       border-bottom-color: var(--accent-color);
     }
 
-    /* FILE GALLERY – FULLY RESPONSIVE GRID (CORE FIX) */
     .file-gallery {
       display: grid;
       gap: 14px;
@@ -402,15 +418,9 @@
       overflow-x: hidden;
       min-height: 220px;
       max-height: 380px;
-      transition: all 0.2s;
-    }
-
-    /* Base responsive grid columns – adapts fluidly */
-    .file-gallery {
       grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     }
 
-    /* Media card – clean, tappable, consistent sizing */
     .media-card {
       cursor: pointer;
       border-radius: var(--radius-sm);
@@ -420,16 +430,10 @@
       overflow: hidden;
       background-color: #f8fafc;
       transition: var(--transition);
-      position: relative;
       display: flex;
       flex-direction: column;
       box-shadow: var(--shadow-sm);
       max-width: 100%;
-    }
-
-    .media-card:hover {
-      transform: translateY(-3px);
-      box-shadow: var(--shadow-md);
     }
 
     .media-card.selected {
@@ -443,7 +447,6 @@
       aspect-ratio: 16 / 11;
       object-fit: cover;
       display: block;
-      background: #eef2ff;
     }
 
     .media-card span {
@@ -459,7 +462,6 @@
       border-top: 1px solid var(--border-color);
     }
 
-    /* Selected preview area – flexible and adaptive */
     .selected-preview {
       width: 100%;
       min-height: 170px;
@@ -480,7 +482,6 @@
       max-height: 160px;
       object-fit: contain;
       border-radius: 10px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
     }
 
     .selected-preview.multi-image {
@@ -507,6 +508,7 @@
       gap: 16px;
       justify-content: flex-end;
       align-items: center;
+      flex-wrap: wrap;
     }
 
     .btn {
@@ -562,133 +564,62 @@
     }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-    /* ========== RESPONSIVE BREAKPOINTS (MEDIA SELECTOR FULLY OPTIMIZED) ========== */
-    /* Tablet & medium screens – gallery columns adjust */
+    /* Responsive */
+    @media (max-width: 800px) {
+      .calendar-grid { min-width: 700px; }
+      .day-cell { min-height: 120px; padding: 6px; }
+      .day-number { font-size: 0.9rem; }
+      .post-badge { font-size: 0.65rem; }
+    }
     @media (max-width: 850px) {
-      .file-gallery {
-        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-        gap: 12px;
-        max-height: 350px;
-      }
-      .media-card img, .media-card video {
-        aspect-ratio: 16 / 10;
-      }
+      .file-gallery { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; max-height: 350px; }
+      .media-card img, .media-card video { aspect-ratio: 16 / 10; }
     }
-
-    /* Mobile landscape & small tablets */
     @media (max-width: 680px) {
-      .modal-content {
-        padding: 24px 18px;
-      }
-      .file-gallery {
-        grid-template-columns: repeat(auto-fill, minmax(125px, 1fr));
-        gap: 10px;
-        padding: 12px;
-      }
-      .media-card span {
-        font-size: 0.65rem;
-        padding: 6px 4px;
-      }
-      .bucket-tab {
-        padding: 10px 16px;
-        font-size: 0.8rem;
-      }
-      .selected-preview.multi-image img {
-        max-width: calc(50% - 8px);
-        height: 100px;
-      }
+      .modal-content { padding: 24px 18px; }
+      .file-gallery { grid-template-columns: repeat(auto-fill, minmax(125px, 1fr)); gap: 10px; padding: 12px; }
+      .bucket-tab { padding: 10px 16px; font-size: 0.8rem; }
+      .selected-preview.multi-image img { max-width: calc(50% - 8px); height: 100px; }
+      .calendar-controls { justify-content: center; }
+      .month-display { font-size: 1.2rem; min-width: auto; order: 2; width: 100%; margin: 8px 0; }
     }
-
-    /* Compact phones (≤550px) – gallery becomes very clean */
     @media (max-width: 550px) {
-      .file-gallery {
-        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-        gap: 10px;
-        max-height: 320px;
-      }
-      .media-card img, .media-card video {
-        height: auto;
-        aspect-ratio: 4 / 3;
-      }
-      .modal-actions {
-        flex-wrap: wrap;
-        gap: 12px;
-      }
-      .btn-danger {
-        margin-right: 0;
-        width: 100%;
-        order: 3;
-      }
-      .btn-outline, .btn-primary, .btn-success {
-        flex: 1;
-        justify-content: center;
-      }
-      .selected-preview {
-        min-height: 140px;
-      }
-      .selected-preview img, .selected-preview video {
-        max-height: 130px;
-      }
+      .file-gallery { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; max-height: 320px; }
+      .modal-actions { flex-wrap: wrap; gap: 12px; }
+      .btn-danger { margin-right: 0; width: 100%; order: 3; }
+      .btn-outline, .btn-primary, .btn-success { flex: 1; justify-content: center; }
     }
-
-    /* Very narrow devices (≤400px) */
-    @media (max-width: 400px) {
-      .file-gallery {
-        grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
-      }
-      .media-card span {
-        font-size: 0.6rem;
-      }
-    }
-
-    /* Form layout adjustments for mobile */
     @media (max-width: 900px) {
       .form-layout { grid-template-columns: 1fr; }
       .form-group.full-width { grid-column: span 1; }
-      .app-header { flex-direction: column; gap: 16px; text-align: center; }
-      .app-header .brand { text-align: center; }
-    }
-
-    /* Additional overflow safety */
-    .media-card img, .media-card video {
-      border-radius: 6px 6px 0 0;
-    }
-    .file-gallery::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
-    }
-    .bucket-navigation::-webkit-scrollbar {
-      height: 4px;
+      .app-header { flex-direction: column; text-align: center; }
     }
   </style>
 </head>
 <body>
-
 <div class="container">
   <header class="app-header">
     <div class="brand">
       <h1><i class="fa-solid fa-calendar-days"></i> Content Studio Pro</h1>
       <span style="font-size: 0.85rem; opacity: 0.8; margin-left: 36px; font-weight: 500;">Enterprise Database Sync Edition</span>
     </div>
-    <a href="upload.html" class="upload-btn">
-      <i class="fa-solid fa-cloud-arrow-up"></i> Upload Media
-    </a>
+    <a href="upload.html" class="upload-btn"><i class="fa-solid fa-cloud-arrow-up"></i> Upload Media</a>
   </header>
 
   <section class="calendar-controls">
-    <button class="control-btn" id="btn-prev-month" title="Previous Month"><i class="fa-solid fa-chevron-left"></i></button>
+    <button class="control-btn" id="btn-prev-month"><i class="fa-solid fa-chevron-left"></i></button>
     <div class="month-display" id="current-month-display">Loading Calendar...</div>
     <div style="display: flex; gap: 12px;">
-      <button class="control-btn" id="btn-refresh" title="Sync with Database"><i class="fa-solid fa-rotate"></i></button>
-      <button class="control-btn" id="btn-next-month" title="Next Month"><i class="fa-solid fa-chevron-right"></i></button>
+      <button class="control-btn" id="btn-refresh"><i class="fa-solid fa-rotate"></i></button>
+      <button class="control-btn" id="btn-next-month"><i class="fa-solid fa-chevron-right"></i></button>
     </div>
   </section>
 
   <main class="calendar-wrapper">
-    <div class="weekdays-header">
-      <div>SUNDAY</div><div>MONDAY</div><div>TUESDAY</div><div>WEDNESDAY</div><div>THURSDAY</div><div>FRIDAY</div><div>SATURDAY</div>
+    <div class="calendar-grid">
+      <div class="weekdays-header"><div>SUNDAY</div><div>MONDAY</div><div>TUESDAY</div><div>WEDNESDAY</div><div>THURSDAY</div><div>FRIDAY</div><div>SATURDAY</div></div>
+      <div class="days-grid" id="calendar-grid-body"></div>
     </div>
-    <div class="days-grid" id="calendar-grid-body"></div>
   </main>
 </div>
 
@@ -698,7 +629,6 @@
       <h2 class="modal-title" id="modal-title-text"><i class="fa-solid fa-calendar-plus"></i> Schedule Content</h2>
       <button class="close-btn" id="btn-close-modal">&times;</button>
     </div>
-    
     <form id="schedule-form">
       <div class="form-layout">
         <div class="form-group full-width">
@@ -707,39 +637,28 @@
             <option value="Image">📸 Static Image / Carousel (Up to 6)</option>
             <option value="Video">🎥 Short-Form Video</option>
           </select>
-          <div id="video-disclaimer">
-            <i class="fa-solid fa-triangle-exclamation"></i> Important: Video files must be strictly under 30MB or the social media upload will fail!
-          </div>
+          <div id="video-disclaimer"><i class="fa-solid fa-triangle-exclamation"></i> Important: Video files must be strictly under 30MB or the social media upload will fail!</div>
         </div>
-
         <div class="form-group full-width">
           <label><i class="fa-solid fa-server"></i> Supabase Storage Library</label>
           <div class="media-explorer">
             <div class="bucket-navigation" id="bucket-tabs-container"></div>
-            <div class="file-gallery" id="storage-files-container">
-              <div class="loader"></div>
-            </div>
+            <div class="file-gallery" id="storage-files-container"><div class="loader"></div></div>
           </div>
-          <div class="selected-preview" id="media-preview-container">
-            <span style="color: #64748b; font-weight: 600;">No media selected</span>
-          </div>
+          <div class="selected-preview" id="media-preview-container"><span style="color: #64748b; font-weight: 600;">No media selected</span></div>
         </div>
-
         <div class="form-group full-width">
           <label for="post-caption"><i class="fa-solid fa-align-left"></i> Post Caption</label>
           <textarea id="post-caption" rows="4" placeholder="Write your engaging caption here..."></textarea>
         </div>
-
         <div class="form-group">
           <label for="schedule-time"><i class="fa-solid fa-clock"></i> Scheduled Time (24h)</label>
           <input type="time" id="schedule-time" value="10:00" required>
         </div>
-
         <div class="form-group">
           <label for="market-select"><i class="fa-solid fa-globe"></i> Target Market (Select One)</label>
           <select id="market-select" required></select>
         </div>
-
         <div class="form-group full-width">
           <label><i class="fa-solid fa-share-nodes"></i> Distribution Platforms</label>
           <div class="checkbox-container" id="platform-checkboxes">
@@ -748,7 +667,6 @@
           </div>
         </div>
       </div>
-
       <div class="modal-actions">
         <button type="button" class="btn btn-danger" id="btn-delete" style="display:none;"><i class="fa-solid fa-trash"></i> Delete</button>
         <button type="button" class="btn btn-outline" id="btn-cancel">Cancel</button>
@@ -759,32 +677,20 @@
   </div>
 </div>
 
-<div id="toast-container">
-  <i class="fa-solid fa-circle-info" id="toast-icon"></i>
-  <span id="toast-message">Notification message</span>
-</div>
+<div id="toast-container"><i class="fa-solid fa-circle-info" id="toast-icon"></i><span id="toast-message">Notification message</span></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 (function() {
   'use strict';
-
-  /* ==========================================================================
-     ORIGINAL JAVASCRIPT (NO CHANGES)
-     ========================================================================== */
-  const WEBHOOKS = {
-    PUBLISH_NOW: "https://saschag.app.n8n.cloud/webhook/03ffeb05-f2e3-4d4a-8788-c96a5728e286"
-  };
-  
+  const WEBHOOKS = { PUBLISH_NOW: "https://saschag.app.n8n.cloud/webhook/03ffeb05-f2e3-4d4a-8788-c96a5728e286" };
   const SUPABASE_URL = "https://merpsvkfmjbugrgnwwlq.supabase.co";
   const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1lcnBzdmtmbWpidWdyZ253d2xxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE4NzcyMDksImV4cCI6MjA3NzQ1MzIwOX0.HYqgv5VFQxQ0E1QsxXYLLXu_r6LguyAEaErDSkHUc88";
-  
   const STORAGE_BUCKETS = ['ShortForm', 'carousel-image'];
   const TARGET_MARKETS = ['US', 'Korea', 'India', 'France', 'Japan', 'UK', 'Germany', 'Thailand', 'Quuba', 'UAE', 'Israel'];
 
   let supabase;
-  try { supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY); } 
-  catch (error) { console.error("Failed to initialize Supabase:", error); }
+  try { supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY); } catch(e) { console.error(e); }
 
   const AppState = {
     currentDate: new Date(),
@@ -816,7 +722,6 @@
     document.getElementById('schedule-form').addEventListener('submit', handleSaveSchedule);
     document.getElementById('btn-delete').addEventListener('click', handleDeletePost);
     document.getElementById('btn-publish-now').addEventListener('click', handlePublishImmediately);
-    
     document.getElementById('content-type').addEventListener('change', (e) => {
       AppState.selectedMediaUrls = [];
       document.querySelectorAll('.media-card').forEach(c => c.classList.remove('selected'));
@@ -844,45 +749,32 @@
     const month = AppState.currentDate.getMonth();
     const formatter = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' });
     document.getElementById('current-month-display').textContent = formatter.format(AppState.currentDate);
-    
     const firstDayIndex = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const gridBody = document.getElementById('calendar-grid-body');
     gridBody.innerHTML = '';
-
     for (let i = 0; i < firstDayIndex; i++) {
       const emptyCell = document.createElement('div');
       emptyCell.className = 'day-cell empty-cell';
       gridBody.appendChild(emptyCell);
     }
-
     for (let day = 1; day <= daysInMonth; day++) {
-      const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const dateString = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
       const postsForThisDay = AppState.postsData.filter(post => post.date === dateString);
-      
       const dayCell = document.createElement('div');
       dayCell.className = `day-cell ${postsForThisDay.length > 0 ? 'has-data' : ''}`;
-      
       let cellHTML = `<span class="day-number">${day}</span>`;
-      
       postsForThisDay.forEach(post => {
         const icon = post.type === 'Video' ? '<i class="fa-solid fa-video"></i>' : '<i class="fa-solid fa-image"></i>';
         const statusClass = post.is_posted ? 'status-posted' : '';
         const safeCaption = post.caption ? post.caption.substring(0, 15) : 'Untitled';
-        
         let imgCountStr = '';
         if (post.type === 'Image' && post.media_url) {
-            const count = post.media_url.split(',').length;
-            if (count > 1) imgCountStr = `<span class="image-count-indicator">+${count}</span>`;
+          const count = post.media_url.split(',').length;
+          if (count > 1) imgCountStr = `<span class="image-count-indicator">+${count}</span>`;
         }
-
-        cellHTML += `
-          <div class="post-badge ${statusClass}" onclick="event.stopPropagation(); window.openEditModal('${post.id}')" title="Click to edit">
-            ${icon} ${safeCaption}... ${imgCountStr}
-          </div>
-        `;
+        cellHTML += `<div class="post-badge ${statusClass}" onclick="event.stopPropagation(); window.openEditModal('${post.id}')" title="Click to edit">${icon} ${safeCaption}... ${imgCountStr}</div>`;
       });
-
       dayCell.innerHTML = cellHTML;
       dayCell.onclick = () => openCreateModal(dateString);
       gridBody.appendChild(dayCell);
@@ -892,7 +784,6 @@
   const buildStorageTabs = () => {
     const navContainer = document.getElementById('bucket-tabs-container');
     navContainer.innerHTML = '';
-
     STORAGE_BUCKETS.forEach((bucketName, index) => {
       const btn = document.createElement('button');
       btn.type = 'button';
@@ -906,48 +797,34 @@
       };
       navContainer.appendChild(btn);
     });
-
     if (STORAGE_BUCKETS.length > 0) fetchFilesInBucket(STORAGE_BUCKETS[0]);
   };
 
   const fetchFilesInBucket = async (bucketName) => {
     const gallery = document.getElementById('storage-files-container');
     gallery.innerHTML = '<div class="loader"></div>';
-
     try {
       const { data, error } = await supabase.storage.from(bucketName).list();
       if (error) throw error;
       if (!data || data.length === 0) return gallery.innerHTML = '<div style="grid-column: 1/-1; text-align: center;">Folder is empty</div>';
-
       gallery.innerHTML = '';
       const validFiles = data.filter(f => !f.name.startsWith('.'));
-
       validFiles.forEach(file => {
         const { data: urlData } = supabase.storage.from(bucketName).getPublicUrl(file.name);
         const publicUrl = urlData.publicUrl;
         const isVideo = !!file.name.match(/\.(mp4|mov|webm)$/i);
-        
         const card = document.createElement('div');
         card.className = 'media-card';
-        
-        if (AppState.selectedMediaUrls.includes(publicUrl)) {
-          card.classList.add('selected');
-        }
-
-        card.innerHTML = isVideo 
-          ? `<video src="${publicUrl}"></video><span>${file.name}</span>`
-          : `<img src="${publicUrl}" loading="lazy"><span>${file.name}</span>`;
-
+        if (AppState.selectedMediaUrls.includes(publicUrl)) card.classList.add('selected');
+        card.innerHTML = isVideo ? `<video src="${publicUrl}"></video><span>${file.name}</span>` : `<img src="${publicUrl}" loading="lazy"><span>${file.name}</span>`;
         card.onclick = () => handleMediaSelection(publicUrl, isVideo, card);
         gallery.appendChild(card);
       });
-
-    } catch (error) { gallery.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--danger-color);">Failed to load files: ${error.message}</div>`; }
+    } catch (error) { gallery.innerHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--danger-color);">Failed to load: ${error.message}</div>`; }
   };
 
   const handleMediaSelection = (url, isVideo, cardElement) => {
     const currentType = document.getElementById('content-type').value;
-
     if (isVideo && currentType === 'Image') {
       document.getElementById('content-type').value = 'Video';
       document.getElementById('video-disclaimer').style.display = 'block';
@@ -959,7 +836,6 @@
       AppState.selectedMediaUrls = [];
       document.querySelectorAll('.media-card').forEach(c => c.classList.remove('selected'));
     }
-
     if (document.getElementById('content-type').value === 'Video') {
       AppState.selectedMediaUrls = [url];
       document.querySelectorAll('.media-card').forEach(c => c.classList.remove('selected'));
@@ -969,38 +845,28 @@
         AppState.selectedMediaUrls = AppState.selectedMediaUrls.filter(u => u !== url);
         cardElement.classList.remove('selected');
       } else {
-        if (AppState.selectedMediaUrls.length >= 6) {
-          showToast("Maximum of 6 images allowed for carousel posts.", "error");
-          return;
-        }
+        if (AppState.selectedMediaUrls.length >= 6) { showToast("Max 6 images for carousel.", "error"); return; }
         AppState.selectedMediaUrls.push(url);
         cardElement.classList.add('selected');
       }
     }
-    
     renderMediaPreview();
   };
 
   const renderMediaPreview = () => {
     const container = document.getElementById('media-preview-container');
-    
     if (AppState.selectedMediaUrls.length === 0) {
       container.innerHTML = '<span style="color: #64748b; font-weight: 600;">No media selected</span>';
       container.classList.remove('multi-image');
       return;
     }
-
     const currentType = document.getElementById('content-type').value;
-    
     if (currentType === 'Video') {
       container.classList.remove('multi-image');
       container.innerHTML = `<video src="${AppState.selectedMediaUrls[0]}" controls autoplay muted style="width:100%; max-height:180px; object-fit:contain;"></video>`;
     } else {
-      if (AppState.selectedMediaUrls.length > 1) {
-        container.classList.add('multi-image');
-      } else {
-        container.classList.remove('multi-image');
-      }
+      if (AppState.selectedMediaUrls.length > 1) container.classList.add('multi-image');
+      else container.classList.remove('multi-image');
       container.innerHTML = AppState.selectedMediaUrls.map(url => `<img src="${url}" alt="Preview">`).join('');
     }
   };
@@ -1009,46 +875,44 @@
     AppState.editingPostId = null;
     AppState.selectedDateStr = dateStr;
     AppState.selectedMediaUrls = [];
-    
     document.getElementById('schedule-form').reset();
     document.querySelectorAll('.media-card').forEach(card => card.classList.remove('selected'));
     renderMediaPreview();
-    
     document.getElementById('modal-title-text').innerHTML = `<i class="fa-solid fa-calendar-plus"></i> Schedule for ${dateStr}`;
     document.getElementById('btn-delete').style.display = 'none';
     document.getElementById('btn-publish-now').style.display = 'none';
     document.getElementById('video-disclaimer').style.display = 'none';
-    
     const modal = document.getElementById('post-modal');
     modal.style.display = 'flex';
     setTimeout(() => modal.classList.add('show'), 10);
   };
 
   window.openEditModal = (postId) => {
+    console.log("Opening edit modal for post:", postId);
     const postRecord = AppState.postsData.find(p => p.id === postId);
-    if (!postRecord) return;
-
+    if (!postRecord) {
+      console.error("Post not found:", postId);
+      showToast("Post not found", "error");
+      return;
+    }
     AppState.editingPostId = postId;
     AppState.selectedDateStr = postRecord.date;
-
     document.getElementById('modal-title-text').innerHTML = `<i class="fa-solid fa-pen-to-square"></i> Edit Post`;
     document.getElementById('content-type').value = postRecord.type;
     document.getElementById('post-caption').value = postRecord.caption || '';
     document.getElementById('schedule-time').value = postRecord.time;
     document.getElementById('market-select').value = (postRecord.markets && postRecord.markets[0]) ? postRecord.markets[0] : 'US';
     document.getElementById('video-disclaimer').style.display = postRecord.type === 'Video' ? 'block' : 'none';
-
     const platforms = postRecord.platforms || [];
     document.querySelectorAll('input[name="platform"]').forEach(checkbox => { checkbox.checked = platforms.includes(checkbox.value); });
-
-    if (postRecord.media_url) {
-      AppState.selectedMediaUrls = postRecord.media_url.split(',');
-    } else {
-      AppState.selectedMediaUrls = [];
-    }
-    
+    if (postRecord.media_url) AppState.selectedMediaUrls = postRecord.media_url.split(',');
+    else AppState.selectedMediaUrls = [];
     renderMediaPreview();
-
+    // Force show the buttons
+    const deleteBtn = document.getElementById('btn-delete');
+    const publishBtn = document.getElementById('btn-publish-now');
+    if (deleteBtn) deleteBtn.style.display = 'inline-flex';
+    if (publishBtn) publishBtn.style.display = 'inline-flex';
     const modal = document.getElementById('post-modal');
     modal.style.display = 'flex';
     setTimeout(() => modal.classList.add('show'), 10);
@@ -1064,80 +928,53 @@
     if (AppState.selectedMediaUrls.length === 0) throw new Error("You must select media from the storage library.");
     const platforms = Array.from(document.querySelectorAll('input[name="platform"]:checked')).map(cb => cb.value);
     if (platforms.length === 0) throw new Error("You must select at least one distribution platform.");
-
     return {
       date: AppState.selectedDateStr,
       type: document.getElementById('content-type').value,
-      media_url: AppState.selectedMediaUrls.join(','), 
+      media_url: AppState.selectedMediaUrls.join(','),
       caption: document.getElementById('post-caption').value,
       time: document.getElementById('schedule-time').value,
-      markets: [document.getElementById('market-select').value],   
+      markets: [document.getElementById('market-select').value],
       platforms: platforms
     };
   };
 
-  const buildWebhookPayload = (dbPayload, generatedId, actionStr) => {
-    return {
-      ...dbPayload,
-      id: generatedId,
-      action: actionStr,
-      media_urls_array: AppState.selectedMediaUrls,
-      image_count: AppState.selectedMediaUrls.length
-    };
-  };
+  const buildWebhookPayload = (dbPayload, generatedId, actionStr) => ({ ...dbPayload, id: generatedId, action: actionStr, media_urls_array: AppState.selectedMediaUrls, image_count: AppState.selectedMediaUrls.length });
 
   const handleSaveSchedule = async (e) => {
     e.preventDefault();
     try {
       const payload = getFormData();
       payload.is_posted = false;
-
       const saveBtn = document.getElementById('btn-save-schedule');
       saveBtn.disabled = true; saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
-
       let dbResponse;
-      if (AppState.editingPostId) {
-        dbResponse = await supabase.from('posts').update(payload).eq('id', AppState.editingPostId).select();
-      } else {
-        dbResponse = await supabase.from('posts').insert([payload]).select();
-      }
+      if (AppState.editingPostId) dbResponse = await supabase.from('posts').update(payload).eq('id', AppState.editingPostId).select();
+      else dbResponse = await supabase.from('posts').insert([payload]).select();
       if (dbResponse.error) throw dbResponse.error;
-
-      showToast("Schedule successfully saved.", "success");
+      showToast("Schedule saved.", "success");
       closeModal();
       await fetchPostsFromDatabase();
-    } catch (error) { showToast(error.message, "error"); } 
-    finally {
-      const saveBtn = document.getElementById('btn-save-schedule');
-      saveBtn.disabled = false; saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save Schedule';
-    }
+    } catch (error) { showToast(error.message, "error"); }
+    finally { const saveBtn = document.getElementById('btn-save-schedule'); saveBtn.disabled = false; saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save Schedule'; }
   };
 
   const handlePublishImmediately = async () => {
     if (!AppState.editingPostId) return;
     if (!confirm("Override schedule and publish to platforms right now?")) return;
-
     try {
       const payload = getFormData();
-      payload.is_posted = true; 
-
+      payload.is_posted = true;
       const pubBtn = document.getElementById('btn-publish-now');
       pubBtn.disabled = true; pubBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Publishing...';
-
-      const { data, error } = await supabase.from('posts').update(payload).eq('id', AppState.editingPostId).select();
+      const { error } = await supabase.from('posts').update(payload).eq('id', AppState.editingPostId).select();
       if (error) throw error;
-
       triggerExternalWebhook(WEBHOOKS.PUBLISH_NOW, buildWebhookPayload(payload, AppState.editingPostId, 'publish_immediately'));
-
-      showToast("Publishing sequence initiated!", "success");
+      showToast("Publishing initiated!", "success");
       closeModal();
       await fetchPostsFromDatabase();
-
-    } catch (error) { showToast("Failed to publish: " + error.message, "error"); } 
-    finally {
-      const pubBtn = document.getElementById('btn-publish-now');
-      pubBtn.disabled = false; pubBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Publish Now';
-    }
+    } catch (error) { showToast("Failed to publish: " + error.message, "error"); }
+    finally { const pubBtn = document.getElementById('btn-publish-now'); pubBtn.disabled = false; pubBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Publish Now'; }
   };
 
   const handleDeletePost = async () => {
@@ -1150,32 +987,24 @@
         showToast("Post deleted.", "success");
         closeModal();
         await fetchPostsFromDatabase();
-      } catch (error) { showToast("Deletion failed: " + error.message, "error"); } 
+      } catch (error) { showToast("Deletion failed: " + error.message, "error"); }
       finally { document.getElementById('btn-delete').disabled = false; }
     }
   };
 
-  const triggerExternalWebhook = (url, payloadData) => {
-    fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payloadData)
-    }).catch(err => console.warn("Webhook network issue:", err));
-  };
+  const triggerExternalWebhook = (url, payloadData) => fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payloadData) }).catch(err => console.warn("Webhook error:", err));
 
   const showToast = (message, type = 'info') => {
     const container = document.getElementById('toast-container');
     const msgEl = document.getElementById('toast-message');
     const iconEl = document.getElementById('toast-icon');
-
     iconEl.className = 'fa-solid ';
-    if (type === 'error') { container.style.backgroundColor = 'var(--danger-color)'; iconEl.className += 'fa-circle-xmark'; } 
-    else if (type === 'success') { container.style.backgroundColor = 'var(--success-color)'; iconEl.className += 'fa-circle-check'; } 
+    if (type === 'error') { container.style.backgroundColor = 'var(--danger-color)'; iconEl.className += 'fa-circle-xmark'; }
+    else if (type === 'success') { container.style.backgroundColor = 'var(--success-color)'; iconEl.className += 'fa-circle-check'; }
     else { container.style.backgroundColor = 'var(--primary-color)'; iconEl.className += 'fa-circle-info'; }
-
     msgEl.textContent = message;
     container.classList.add('show');
-    setTimeout(() => { container.classList.remove('show'); }, 3500);
+    setTimeout(() => container.classList.remove('show'), 3500);
   };
 
   document.addEventListener('DOMContentLoaded', initApp);
