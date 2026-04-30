@@ -370,6 +370,34 @@
       font-weight: 600;
     }
 
+    /* Translate checkbox row styling */
+    .translate-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+      background-color: #f8fafc;
+      padding: 14px 18px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-color);
+    }
+    .translate-row input {
+      width: 22px;
+      height: 22px;
+      cursor: pointer;
+      margin: 0;
+    }
+    .translate-row label {
+      margin: 0;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .translate-hint {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-left: auto;
+    }
+
     /* Media Explorer */
     .media-explorer {
       border: 2px solid var(--border-color);
@@ -666,6 +694,16 @@
             <label class="checkbox-item"><input type="checkbox" name="platform" value="Instagram"> Instagram</label>
           </div>
         </div>
+
+        <!-- NEW: Translate checkbox section (last in form) -->
+        <div class="form-group full-width">
+          <label><i class="fa-solid fa-language"></i> Translation Requirement</label>
+          <div class="translate-row">
+            <input type="checkbox" id="translate-checkbox">
+            <label for="translate-checkbox">Mark for translation / subtitles</label>
+            <span class="translate-hint"><i class="fa-regular fa-comment-dots"></i> Only tick translate if the video includes speaking</span>
+          </div>
+        </div>
       </div>
       <div class="modal-actions">
         <button type="button" class="btn btn-danger" id="btn-delete" style="display:none;"><i class="fa-solid fa-trash"></i> Delete</button>
@@ -878,6 +916,8 @@
     document.getElementById('schedule-form').reset();
     document.querySelectorAll('.media-card').forEach(card => card.classList.remove('selected'));
     renderMediaPreview();
+    // Reset translate checkbox explicitly
+    document.getElementById('translate-checkbox').checked = false;
     document.getElementById('modal-title-text').innerHTML = `<i class="fa-solid fa-calendar-plus"></i> Schedule for ${dateStr}`;
     document.getElementById('btn-delete').style.display = 'none';
     document.getElementById('btn-publish-now').style.display = 'none';
@@ -888,10 +928,8 @@
   };
 
   window.openEditModal = (postId) => {
-    console.log("Opening edit modal for post:", postId);
     const postRecord = AppState.postsData.find(p => p.id === postId);
     if (!postRecord) {
-      console.error("Post not found:", postId);
       showToast("Post not found", "error");
       return;
     }
@@ -907,8 +945,10 @@
     document.querySelectorAll('input[name="platform"]').forEach(checkbox => { checkbox.checked = platforms.includes(checkbox.value); });
     if (postRecord.media_url) AppState.selectedMediaUrls = postRecord.media_url.split(',');
     else AppState.selectedMediaUrls = [];
+    // load translate boolean (default false if missing in old data)
+    const translateValue = postRecord.translate === true || postRecord.translate === 'true' ? true : false;
+    document.getElementById('translate-checkbox').checked = translateValue;
     renderMediaPreview();
-    // Force show the buttons
     const deleteBtn = document.getElementById('btn-delete');
     const publishBtn = document.getElementById('btn-publish-now');
     if (deleteBtn) deleteBtn.style.display = 'inline-flex';
@@ -935,11 +975,12 @@
       caption: document.getElementById('post-caption').value,
       time: document.getElementById('schedule-time').value,
       markets: [document.getElementById('market-select').value],
-      platforms: platforms
+      platforms: platforms,
+      translate: document.getElementById('translate-checkbox').checked   // boolean true/false
     };
   };
 
-  const buildWebhookPayload = (dbPayload, generatedId, actionStr) => ({ ...dbPayload, id: generatedId, action: actionStr, media_urls_array: AppState.selectedMediaUrls, image_count: AppState.selectedMediaUrls.length });
+  const buildWebhookPayload = (dbPayload, generatedId, actionStr) => ({ ...dbPayload, id: generatedId, action: actionStr, media_urls_array: AppState.selectedMediaUrls, image_count: AppState.selectedMediaUrls.length, translate: dbPayload.translate });
 
   const handleSaveSchedule = async (e) => {
     e.preventDefault();
@@ -952,7 +993,7 @@
       if (AppState.editingPostId) dbResponse = await supabase.from('posts').update(payload).eq('id', AppState.editingPostId).select();
       else dbResponse = await supabase.from('posts').insert([payload]).select();
       if (dbResponse.error) throw dbResponse.error;
-      showToast("Schedule saved.", "success");
+      showToast("Schedule saved (translate flag set).", "success");
       closeModal();
       await fetchPostsFromDatabase();
     } catch (error) { showToast(error.message, "error"); }
@@ -970,7 +1011,7 @@
       const { error } = await supabase.from('posts').update(payload).eq('id', AppState.editingPostId).select();
       if (error) throw error;
       triggerExternalWebhook(WEBHOOKS.PUBLISH_NOW, buildWebhookPayload(payload, AppState.editingPostId, 'publish_immediately'));
-      showToast("Publishing initiated!", "success");
+      showToast("Publishing initiated with translate flag!", "success");
       closeModal();
       await fetchPostsFromDatabase();
     } catch (error) { showToast("Failed to publish: " + error.message, "error"); }
