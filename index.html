@@ -398,6 +398,26 @@
       margin-left: auto;
     }
 
+    .language-options {
+      display: none;
+      margin-top: 12px;
+      background-color: #f8fafc;
+      padding: 14px 18px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-color);
+    }
+
+    .language-options.show {
+      display: block;
+    }
+
+    .language-help {
+      display: block;
+      margin-top: 6px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
     /* Media Explorer */
     .media-explorer {
       border: 2px solid var(--border-color);
@@ -703,6 +723,13 @@
             <label for="translate-checkbox">Mark for translation / subtitles</label>
             <span class="translate-hint"><i class="fa-regular fa-comment-dots"></i> Only tick translate if the video includes speaking</span>
           </div>
+          <div class="language-options" id="india-language-options">
+            <label for="india-language-select"><i class="fa-solid fa-earth-asia"></i> Indian Market Language</label>
+            <select id="india-language-select">
+              <option value="">Select language...</option>
+            </select>
+            <span class="language-help">This language choice only appears for India when translation is selected.</span>
+          </div>
         </div>
       </div>
       <div class="modal-actions">
@@ -726,6 +753,7 @@
   const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1lcnBzdmtmbWpidWdyZ253d2xxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE4NzcyMDksImV4cCI6MjA3NzQ1MzIwOX0.HYqgv5VFQxQ0E1QsxXYLLXu_r6LguyAEaErDSkHUc88";
   const STORAGE_BUCKETS = ['ShortForm', 'carousel-image'];
   const TARGET_MARKETS = ['US', 'Korea', 'India', 'France', 'Japan', 'UK', 'Germany', 'Thailand', 'Quuba', 'UAE', 'Israel'];
+  const INDIA_TRANSLATION_LANGUAGES = ['Hindi', 'Bengali', 'Marathi', 'Telugu', 'Tamil'];
 
   let supabase;
   try { supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY); } catch(e) { console.error(e); }
@@ -748,6 +776,14 @@
   const populateSelectOptions = () => {
     const marketSelect = document.getElementById('market-select');
     TARGET_MARKETS.forEach(m => { const o = document.createElement('option'); o.value = m; o.textContent = m; marketSelect.appendChild(o); });
+
+    const indiaLanguageSelect = document.getElementById('india-language-select');
+    INDIA_TRANSLATION_LANGUAGES.forEach(language => {
+      const o = document.createElement('option');
+      o.value = language;
+      o.textContent = language;
+      indiaLanguageSelect.appendChild(o);
+    });
   };
 
   const bindEventListeners = () => {
@@ -760,12 +796,27 @@
     document.getElementById('schedule-form').addEventListener('submit', handleSaveSchedule);
     document.getElementById('btn-delete').addEventListener('click', handleDeletePost);
     document.getElementById('btn-publish-now').addEventListener('click', handlePublishImmediately);
+    document.getElementById('market-select').addEventListener('change', updateIndiaLanguageOptions);
+    document.getElementById('translate-checkbox').addEventListener('change', updateIndiaLanguageOptions);
     document.getElementById('content-type').addEventListener('change', (e) => {
       AppState.selectedMediaUrls = [];
       document.querySelectorAll('.media-card').forEach(c => c.classList.remove('selected'));
       renderMediaPreview();
       document.getElementById('video-disclaimer').style.display = e.target.value === 'Video' ? 'block' : 'none';
     });
+  };
+
+  const updateIndiaLanguageOptions = () => {
+    const marketValue = document.getElementById('market-select').value;
+    const translateChecked = document.getElementById('translate-checkbox').checked;
+    const languageWrapper = document.getElementById('india-language-options');
+    const languageSelect = document.getElementById('india-language-select');
+    const shouldShow = marketValue === 'India' && translateChecked;
+
+    languageWrapper.classList.toggle('show', shouldShow);
+    languageSelect.required = shouldShow;
+
+    if (!shouldShow) languageSelect.value = '';
   };
 
   const fetchPostsFromDatabase = async () => {
@@ -916,8 +967,10 @@
     document.getElementById('schedule-form').reset();
     document.querySelectorAll('.media-card').forEach(card => card.classList.remove('selected'));
     renderMediaPreview();
-    // Reset translate checkbox explicitly
+    // Reset translate checkbox and Indian language selection explicitly
     document.getElementById('translate-checkbox').checked = false;
+    document.getElementById('india-language-select').value = '';
+    updateIndiaLanguageOptions();
     document.getElementById('modal-title-text').innerHTML = `<i class="fa-solid fa-calendar-plus"></i> Schedule for ${dateStr}`;
     document.getElementById('btn-delete').style.display = 'none';
     document.getElementById('btn-publish-now').style.display = 'none';
@@ -948,6 +1001,8 @@
     // load translate boolean (default false if missing in old data)
     const translateValue = postRecord.translate === true || postRecord.translate === 'true' ? true : false;
     document.getElementById('translate-checkbox').checked = translateValue;
+    document.getElementById('india-language-select').value = postRecord.translation_language || '';
+    updateIndiaLanguageOptions();
     renderMediaPreview();
     const deleteBtn = document.getElementById('btn-delete');
     const publishBtn = document.getElementById('btn-publish-now');
@@ -968,19 +1023,36 @@
     if (AppState.selectedMediaUrls.length === 0) throw new Error("You must select media from the storage library.");
     const platforms = Array.from(document.querySelectorAll('input[name="platform"]:checked')).map(cb => cb.value);
     if (platforms.length === 0) throw new Error("You must select at least one distribution platform.");
+    const selectedMarket = document.getElementById('market-select').value;
+    const translateChecked = document.getElementById('translate-checkbox').checked;
+    const selectedLanguage = document.getElementById('india-language-select').value;
+
+    if (selectedMarket === 'India' && translateChecked && !selectedLanguage) {
+      throw new Error("Please select an Indian market language: Hindi, Bengali, Marathi, Telugu, or Tamil.");
+    }
+
     return {
       date: AppState.selectedDateStr,
       type: document.getElementById('content-type').value,
       media_url: AppState.selectedMediaUrls.join(','),
       caption: document.getElementById('post-caption').value,
       time: document.getElementById('schedule-time').value,
-      markets: [document.getElementById('market-select').value],
+      markets: [selectedMarket],
       platforms: platforms,
-      translate: document.getElementById('translate-checkbox').checked   // boolean true/false
+      translate: translateChecked,   // boolean true/false
+      translation_language: selectedMarket === 'India' && translateChecked ? selectedLanguage : null
     };
   };
 
-  const buildWebhookPayload = (dbPayload, generatedId, actionStr) => ({ ...dbPayload, id: generatedId, action: actionStr, media_urls_array: AppState.selectedMediaUrls, image_count: AppState.selectedMediaUrls.length, translate: dbPayload.translate });
+  const buildWebhookPayload = (dbPayload, generatedId, actionStr) => ({
+    ...dbPayload,
+    id: generatedId,
+    action: actionStr,
+    media_urls_array: AppState.selectedMediaUrls,
+    image_count: AppState.selectedMediaUrls.length,
+    translate: dbPayload.translate,
+    translation_language: dbPayload.translation_language
+  });
 
   const handleSaveSchedule = async (e) => {
     e.preventDefault();
